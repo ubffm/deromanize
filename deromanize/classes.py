@@ -180,7 +180,7 @@ class Trie:
                     return value, remainder
 
             if node[0] is not empty:
-                value, remainder = node[0], key[i:]
+                value, remainder = node[0], key[i+1:]
 
         if value is empty:
             raise KeyError(matched_key)
@@ -242,12 +242,12 @@ class ReplacementList(collections.UserList):
 
     def __add__(self, other):
         key = self.key + other.key
-        composite_values = ReplacementList(key)
+        composite_values = []
 
         for value in self:
             composite_values.extend(value + v for v in other)
 
-        return composite_values
+        return ReplacementList(key, composite_values)
 
     def __repr__(self):
         return "ReplacementList({!r}, {!r})".format(self.key, self.data)
@@ -271,16 +271,14 @@ class TransKey:
     def __getitem__(self, key):
         return self.groups[key]
 
-    def key2group(self, profile_key, group, weight=0):
+    def key2group(self, profile_key, group_name, weight=0):
         """Add a section from the profile into a character group
         """
-        abstracted = abstract_reps(key, weight)
-        group = self.groups.setdefault(key, Trie())
+        abstracted = abstract_reps(self.profile[profile_key], weight)
+        group = self.groups.setdefault(group_name, Trie())
 
         for k, v in abstracted.items():
-            group.setdefault(k, []).extend[v]
-
-
+            group.setdefault(k, ReplacementList(k)).extend(v)
 
 
 
@@ -291,7 +289,4 @@ def abstract_reps(dictionary, weight=0):
             values = [values]
         replacements.setdefault(key, ReplacementList(key)).extend(
                 Replacement(i + weight, v) for i, v in enumerate(values))
-
     return replacements
-
-import yaml

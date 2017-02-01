@@ -1,0 +1,74 @@
+consonants:
+  ʾ: א
+  b: ב
+  v: ב
+  g: ג
+  d: ד
+  h: ה
+  ṿ: [וו, ו]
+  z: ז
+  ḥ: ח
+  ṭ: ט
+  y: [יי, י]
+  k: כ
+  kh: כ
+  l: ל
+  m: מ
+  n: נ
+  s: ס
+  ʿ: ע
+  p: פ
+  f: פ
+  ts: צ
+  q: ק
+  r: ר
+  ś: ש
+  sh: ש
+  t: ת
+
+vowels:
+  i: [י, '']
+  e: ['', י]
+  a: ''
+  o: [ו, '']
+  u: ו
+
+clusters:
+  k'h: כה
+  s'h: סה
+  t's: תס
+  iyu: יו
+  yu: יו
+  yu: יו
+  uy: וי
+  yo: יו
+  oy: וי
+  iy: יי
+
+infrequent:
+  i: א
+  e: א
+  a: א
+  o: א
+
+final:
+  k: ך
+  kh: ך
+  m: ם
+  n: ן
+  f: ף
+  ts: ץ
+  ṿ: ו
+  i: י
+  u: ו
+  im: ים
+  ot: ות
+  it: ית
+  ayim: [יים, ים]
+  aṿ: [יו, ו]
+  yah: יה
+
+flattened:
+  v: b
+  ḵ: k
+  f: p
