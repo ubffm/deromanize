@@ -166,24 +166,26 @@ class Trie:
 
     def getpart(self, key):
         """takes a key and matches as much of it as possible. returns a tuple
-        containing: (value of the node, part of the key that matched, the
-        remainder of the key)
+        containing the value of the node and the remainder of the key.
         """
         node = self.root
+        value = empty
         for i, char in enumerate(key):
             try:
                 node = node[1][char]
             except KeyError:
-                if node is self.root or node[0] is empty:
+                if value is empty:
                     raise
                 else:
-                    return node[0], key[i:]
+                    return value, remainder
 
+            if node[0] is not empty:
+                value, remainder = node[0], key[i:]
 
-        if node[0] is empty:
+        if value is empty:
             raise KeyError(matched_key)
         else:
-            return node[0], ''
+            return value, remainder
 
     def getallparts(self, key):
         results = []
