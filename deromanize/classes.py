@@ -27,9 +27,6 @@ class _Empty:
 empty = _Empty()
 
 
-class TrieInitializationError(Exception): pass
-
-
 class Trie:
     """a prefix tree for dealing with transliteration standards with digraphs.
     This could just be a dictionary if there weren't digraphs in
@@ -251,6 +248,12 @@ class ReplacementList(collections.UserList):
 
     def __repr__(self):
         return "ReplacementList({!r}, {!r})".format(self.key, self.data)
+
+    def __str__(self):
+        string = self.key + ':'
+        for r in self:
+            string += '\n{:2} {}'.format(r.weight, r.value)
+        return string
 
 
 class TransKey:
