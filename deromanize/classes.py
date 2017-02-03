@@ -37,7 +37,7 @@ class Trie:
     methods for use with transliteration stuff.
     """
     def __init__(self, dictionary=None):
-        """Trie([dict])
+        """Trie([dictionary])
 
         The optional dictionary parameter may be used to create a prefix tree
         with all nodes based on the dictionary keys, and all vaules as
