@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import sys
 from functools import reduce
 from operator import add
@@ -39,13 +38,27 @@ def test_trie_getting(profile, trie):
     with pytest.raises(KeyError):
         trie['']
     assert trie._getnode('') is trie.root
+    assert trie.getpart('shalom') == (profile['sh'], 'alom')
+    assert trie.getallparts('shalom') == [profile['sh'],
+                                          profile['a'],
+                                          profile['l'],
+                                          profile['o'],
+                                          profile['m']]
 
 
 def test_trie_integ(profile, trie):
     assert dict(trie.items()) == profile
 
 
-def test_suffixtree_getting(profile, suffixtree):
+def test_suffixtree(profile, suffixtree):
     assert suffixtree['sh'] == profile['sh']
     assert suffixtree['a'] == profile['a']
     assert dict(suffixtree.items()) == profile
+    assert suffixtree.getpart('shalom') == (profile['m'], 'shalo')
+    assert suffixtree.getallparts('shalom') == [profile['sh'],
+                                                profile['a'],
+                                                profile['l'],
+                                                profile['o'],
+                                                profile['m']]
+
+# def test_replacement(

@@ -213,6 +213,9 @@ class SuffixTree(Trie):
     def items(self, key=None):
         return ((k[::-1], v) for k, v in super().items(key))
 
+    def getallparts(self, key):
+        return super().getallparts(key)[::-1]
+
 
 class Replacement:
     """a type for holding a replacement and it's weight. A Replacment on its
@@ -274,14 +277,16 @@ class TransKey:
     def __getitem__(self, key):
         return self.groups[key]
 
-    def key2group(self, profile_key, group_name, weight=0):
-        """Add a section from the profile into a character group
+    def keys2group(self, group_name, *profile_keys, weight=0, endings=False):
+        """Add a section from the profile into a character group.
         """
-        abstracted = abstract_reps(self.profile[profile_key], weight)
-        group = self.groups.setdefault(group_name, Trie())
+        treetype = SuffixTree if endings else Trie
+        for key in profile_keys:
+            abstracted = abstract_reps(self.profile[key], weight)
+            group = self.groups.setdefault(group_name, treetype())
 
-        for k, v in abstracted.items():
-            group.setdefault(k, ReplacementList(k)).extend(v)
+            for k, v in abstracted.items():
+                group.setdefault(k, ReplacementList(k)).extend(v)
 
 
 
