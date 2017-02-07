@@ -18,11 +18,17 @@
 # this file under either the MPL or the EUPL.
 import copy
 import collections
+import itertools
+from functools import reduce
+from operator import add
 
 
 class _Empty:
     def __repr__(self):
-        return "Empty"
+        return "empty"
+
+    def __eq__(self, other):
+        return isinstance(other, _Empty)
 
 empty = _Empty()
 
@@ -226,6 +232,9 @@ class Replacement:
         self.weight, self.value = weight, value
 
     def __add__(self, other):
+        """adding one Replacement to another results in them combining their
+        weight and string values.
+        """
         return Replacement(self.weight + other.weight, self.value + other.value)
 
     def __repr__(self):
@@ -241,11 +250,12 @@ class ReplacementList(collections.UserList):
         self.data = values if values is not None else []
 
     def __add__(self, other):
+        """When two ReplacementList instances are added together, the keys are
+        concatinated, and all combinations of the replacements are also added
+        together. It's a bit multiplicative, really.
+        """
         key = self.key + other.key
-        composite_values = []
-
-        for value in self:
-            composite_values.extend(value + v for v in other)
+        composite_values = [x + y for x, y in itertools.product(self, other)]
 
         return ReplacementList(key, composite_values)
 
@@ -258,10 +268,13 @@ class ReplacementList(collections.UserList):
             string += '\n{:2} {}'.format(r.weight, r.value)
         return string
 
+    def sort(self):
+        self.data.sort(key=lambda rep: rep.weight)
+
 
 class TransKey:
-    """an object to build up a transliteration key from a config file. (--or
-    rather, serialized data unmarshalled from a config file.)
+    """an object to build up a transliteration key from a config file. (or
+    rather, a python dictionary unmarshalled from a config file.)
     """
     def __init__(self, profile):
         self.profile = profile
@@ -289,7 +302,6 @@ class TransKey:
                 group.setdefault(k, ReplacementList(k)).extend(v)
 
 
-
 def abstract_reps(dictionary, weight=0):
     replacements = {}
     for key, values in dictionary.items():
@@ -298,3 +310,7 @@ def abstract_reps(dictionary, weight=0):
         replacements.setdefault(key, ReplacementList(key)).extend(
                 Replacement(i + weight, v) for i, v in enumerate(values))
     return replacements
+
+
+def add_reps(*reps):
+    return reduce(add, reps)
