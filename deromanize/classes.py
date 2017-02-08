@@ -240,6 +240,9 @@ class Replacement:
     def __repr__(self):
         return "Replacement({!r}, {!r})".format(self.weight, self.value)
 
+    def __str__(self):
+        return self.value
+
 
 class ReplacementList(collections.UserList):
     """a list of Replacements with a .key attribute containing the key to which
@@ -282,35 +285,58 @@ class TransKey:
         self.vowels = set(profile['vowels'])
         self.chars = self.vowels | self.consonants
 
-        self.groups = {}
+        self.keys = {}
 
     def __setitem__(self, key, value):
-        self.groups[key] = value
+        self.keys[key] = value
 
     def __getitem__(self, key):
-        return self.groups[key]
+        return self.keys[key]
 
-    def keys2group(self, group_name, *profile_keys, weight=0, endings=False):
-        """Add a section from the profile into a character group.
-        """
-        treetype = SuffixTree if endings else Trie
-        for key in profile_keys:
-            abstracted = abstract_reps(self.profile[key], weight)
-            group = self.groups.setdefault(group_name, treetype())
+    def keymaker(self, *profile_groups, key=None, weight=0):
+        key = {} if key is None else key
+        for group in profile_groups:
+            abstracted = self._abstract_reps(group, weight)
 
             for k, v in abstracted.items():
-                group.setdefault(k, ReplacementList(k)).extend(v)
+                key.setdefault(k, ReplacementList(k)).extend(v)
+        return key
+
+    def _abstract_reps(self, group, weight=0):
+        """Turn groups from a profile data structure (a dictionary with some
+        strings and lists) into a dictionary of ReplacementList instances with
+        weighted replacements.
+        """
+        replacements = {}
+        for key, values in self.profile[group].items():
+            if isinstance(values, str):
+                values = [values]
+            replacements.setdefault(key, ReplacementList(key)).extend(
+                    Replacement(i + weight, v) for i, v in enumerate(values))
+        return replacements
+
+    def groups2key(self, key_name, *profile_groups, weight=0, endings=False):
+        """Add a section from the profile into a character group. If any keys
+        already exist in the group, their values will be added to a
+        ReplacementList.
+        """
+        treetype = SuffixTree if endings else Trie
+        key = self.keys.setdefault(key_name, treetype())
+        self.keymaker(*profile_groups, key=key, weight=weight)
+
+    def basekey2new(
+            self,
+            base_key,
+            new_key,
+            *profile_groups,
+            weight=0,
+            endings=False):
+        treetype = SuffixTree if endings else Trie
+        new_base = dict(self[base_key].items())
+        new_updates = self.keymaker(*profile_groups, weight=weight)
+        new_base.update(new_updates)
+        self[new_key] = treetype(new_base)
 
 
-def abstract_reps(dictionary, weight=0):
-    replacements = {}
-    for key, values in dictionary.items():
-        if isinstance(values, str):
-            values = [values]
-        replacements.setdefault(key, ReplacementList(key)).extend(
-                Replacement(i + weight, v) for i, v in enumerate(values))
-    return replacements
-
-
-def add_reps(*reps):
+def add_reps(reps):
     return reduce(add, reps)

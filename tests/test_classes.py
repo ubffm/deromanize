@@ -5,7 +5,7 @@ from deromanize import classes
 import pytest
 import yaml
 
-PROFILE = yaml.safe_load(open('../data/new.yml'))
+PROFILE = yaml.safe_load(open('../data/test.yml'))
 
 
 def getbasesdict(*groups):
@@ -31,12 +31,18 @@ def suffixtree():
     return classes.SuffixTree(profile())
 
 @pytest.fixture
-def rep1():
-    return classes.Replacement(2, 'foo')
+def rep():
+    return (classes.Replacement(2, 'foo'),
+            classes.Replacement(3, 'bar'),
+            classes.Replacement(4, 'spam'),
+            classes.Replacement(5, 'eggs'))
 
 @pytest.fixture
-def rep2():
-    return classes.Replacement(3, 'bar')
+def basekey():
+    key = classes.TransKey(PROFILE)
+    key.groups2key('base', 'consonants', 'vowels', 'clusters')
+    return key
+
 #####################
 
 
@@ -79,22 +85,31 @@ def test_suffixtree(profile, suffixtree):
     assert suffixtree.containsnode("'h")
 
 
-def test_replacement_addition(rep1, rep2):
-    rep3 = rep1 + rep2
-    assert rep3.weight == rep1.weight + rep2.weight
-    assert rep3.value == rep1.value + rep2.value
+def test_replacement_addition(rep):
+    rep3 = rep[0] + rep[1]
+    assert rep3.weight == rep[0].weight + rep[1].weight
+    assert rep3.value == rep[0].value + rep[1].value
 
 
-def test_replacement_list_addition(rep1, rep2):
-    rlist1 = classes.ReplacementList('baz', [rep1, rep2])
-    rlist2 = classes.ReplacementList('spam', [rep2, rep1])
+def test_replacement_list_addition(rep):
+    rlist1 = classes.ReplacementList('baz', [rep[0], rep[1]])
+    rlist2 = classes.ReplacementList('fjords', [rep[2], rep[3]])
     rlist3 = rlist1 + rlist2
     rlist3.sort()
-    assert str(rlist3) == 'bazspam:\n 4 foofoo\n 5 foobar\n 5 barfoo\n 6 barbar'
-    rlist4 = classes.add_reps(rlist1, rlist2)
+    print(rlist3)
+    assert str(rlist3) == (
+            'bazfjords:\n 6 foospam\n 7 fooeggs\n 7 barspam\n 8 bareggs')
+    rlist4 = classes.add_reps((rlist1, rlist2))
     rlist4.sort()
     assert str(rlist4) == str(rlist3)
 
 
-# def test_transkey(profile):
-#     pass
+def test_transkey(basekey):
+    rep = classes.add_reps(basekey['base'].getallparts('shalom'))
+    print(rep)
+    assert str(rep) == 'shalom:\n 0 שלומ\n 1 שלמ'
+    basekey.basekey2new('base', 'endings', 'final', endings=True)
+    rep = classes.add_reps(basekey['endings'].getallparts('shalom'))
+    assert isinstance(basekey['endings'], classes.SuffixTree)
+    print(rep)
+    assert str(rep) == 'shalom:\n 0 שלום'
