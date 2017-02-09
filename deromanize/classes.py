@@ -21,6 +21,7 @@ import collections
 import itertools
 from functools import reduce
 from operator import add
+import re
 
 
 class _Empty:
@@ -283,8 +284,6 @@ class TransKey:
         self.profile = profile
         self.consonants = set(profile['consonants'])
         self.vowels = set(profile['vowels'])
-        self.chars = self.vowels | self.consonants
-
         self.keys = {}
 
     def __setitem__(self, key, value):
@@ -301,6 +300,7 @@ class TransKey:
             for k, v in abstracted.items():
                 key.setdefault(k, ReplacementList(k)).extend(v)
         return key
+
 
     def _abstract_reps(self, group, weight=0):
         """Turn groups from a profile data structure (a dictionary with some
@@ -324,12 +324,7 @@ class TransKey:
         key = self.keys.setdefault(key_name, treetype())
         self.keymaker(*profile_groups, key=key, weight=weight)
 
-    def basekey2new(
-            self,
-            base_key,
-            new_key,
-            *profile_groups,
-            weight=0,
+    def basekey2new(self, base_key, new_key, *profile_groups, weight=0,
             endings=False):
         treetype = SuffixTree if endings else Trie
         new_base = dict(self[base_key].items())
@@ -337,6 +332,49 @@ class TransKey:
         new_base.update(new_updates)
         self[new_key] = treetype(new_base)
 
+    def generatefuzzy(self, fuzzy_key, fuzzy_rep, base_key):
+        base = self[base_key]
+        fuzzy_rep = [i for i in re.split(r'(\d)', fuzzy_rep) if i]
+
+        counter = 1
+        fuzziez = {}
+        blocks = []
+        for i, c in enumerate(i for i in re.split('(C|V)', fuzzy_key) if i):
+            if c == 'C':
+                fuzziez[counter] = i
+                counter += 1
+                blocks.append(self.consonants)
+            elif c == 'V':
+                fuzziez[counter] = i
+                counter += 1
+                blocks.append(self.vowels)
+            else:
+                blocks.append([c])
+
+        fuzzy_dict = {}
+        for keyparts in itertools.product(*blocks):
+            reps = []
+            for block in fuzzy_rep:
+                try:
+                    reps.append(base[keyparts[fuzziez[int(block)]]])
+                except ValueError:
+                    reps.extend(base.getallparts(block))
+            replacement = add_reps(reps)
+            key = ''.join(keyparts)
+            replacement.key = key
+            fuzzy_dict[key] = replacement
+
+        return fuzzy_dict
+
+
+
 
 def add_reps(reps):
     return reduce(add, reps)
+
+
+if __name__ == '__main__':
+    import yaml
+    prof = yaml.safe_load(open('./data/test.yml'))
+    key = TransKey(prof)
+    key.groups2key('base', 'consonants', 'vowels', 'other', 'clusters')
