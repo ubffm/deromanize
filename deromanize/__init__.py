@@ -1,1 +1,1 @@
-from . import classes
+from .classes import TransKey, add_reps

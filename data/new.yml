@@ -47,6 +47,8 @@ clusters:
   yo: יו
   oy: וי
   iy: יי
+  ʾa: א
+  aʾ: א
 
 infrequent:
   i: א
@@ -68,9 +70,14 @@ final:
   im: ים
   ot: ות
   it: ית
+  enu: ינו
   ayim: [יים, ים]
   aṿ: [יו, ו]
   yah: יה
+
+beginning:
+  y: י
+  ṿ: ו
 
 flattened:
   v: b

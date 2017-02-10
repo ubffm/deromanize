@@ -326,6 +326,9 @@ class TransKey:
 
     def basekey2new(self, base_key, new_key, *profile_groups, weight=0,
             endings=False):
+        """create a new key from an existing one where the new profile groups
+        override the old ones (groups2key appends)
+        """
         treetype = SuffixTree if endings else Trie
         new_base = dict(self[base_key].items())
         new_updates = self.keymaker(*profile_groups, weight=weight)
@@ -333,13 +336,19 @@ class TransKey:
         self[new_key] = treetype(new_base)
 
     def generatefuzzy(self, fuzzy_key, fuzzy_rep, base_key):
+        """implement some kind of fuzzy matching for character classes that
+        generates all possible matches ahead of time
+        """
+        # Function not finished. Still needs some kind of digraph
+        # disambiguation.
         base = self[base_key]
+        fuzzy_key = [i for i in re.split('(C|V)', fuzzy_key) if i]
         fuzzy_rep = [i for i in re.split(r'(\d)', fuzzy_rep) if i]
 
         counter = 1
         fuzziez = {}
         blocks = []
-        for i, c in enumerate(i for i in re.split('(C|V)', fuzzy_key) if i):
+        for i, c in enumerate(fuzzy_key):
             if c == 'C':
                 fuzziez[counter] = i
                 counter += 1
@@ -365,8 +374,6 @@ class TransKey:
             fuzzy_dict[key] = replacement
 
         return fuzzy_dict
-
-
 
 
 def add_reps(reps):

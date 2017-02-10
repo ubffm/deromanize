@@ -1,0 +1,31 @@
+#!/usr/bin/env python3
+import sys
+import deromanize
+import yaml
+
+
+def main():
+    profile = yaml.safe_load(open('./data/new.yml'))
+    key = deromanize.TransKey(profile)
+    key.groups2key('base', 'consonants', 'vowels', 'other', 'clusters')
+    key.groups2key('base', 'infrequent', weight=15)
+    key.basekey2new('base', 'endings', 'final', endings=True)
+    key.basekey2new('base', 'beginning', 'beginning')
+
+    for word in sys.argv[1].lower().split():
+        if word[0] in key.vowels:
+            word = 'ʾ' + word
+        newword = ''
+        for i, c in enumerate(word):
+            if i == 0 or c != word[i-1]:
+                newword += c
+        end, remaider = key['endings'].getpart(newword)
+        front, remaider = key['beginning'].getpart(remaider)
+        middle = deromanize.add_reps(key['base'].getallparts(remaider))
+        hebword = front + middle + end
+        hebword.sort()
+        print(word + ':  ', '\u200E, '.join(i.value for i in hebword))
+
+
+if __name__ == '__main__':
+    main()
