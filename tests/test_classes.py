@@ -5,7 +5,9 @@ from deromanize import classes
 import pytest
 import yaml
 
-PROFILE = yaml.safe_load(open('../data/test.yml'))
+# PROJECT_DIR = os.path.dirname(os.path.dirname(deromanize.__file__))
+# CONFIG_FILE = os.path.join(PROJECT_DIR, 'data', 'test.yml')
+PROFILE = yaml.safe_load(open('test.yml'))
 
 
 def getbasesdict(*groups):

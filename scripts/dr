@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
+import os
 import sys
 import deromanize
 import yaml
 
+PROJECT_DIR = os.path.dirname(os.path.dirname(deromanize.__file__))
+CONFIG_FILE = os.path.join(PROJECT_DIR, 'data', 'new.yml')
+CUTOFF = 5
 
 def main():
-    profile = yaml.safe_load(open('./data/new.yml'))
+    profile = yaml.safe_load(open(CONFIG_FILE))
     key = deromanize.TransKey(profile)
     key.groups2key('base', 'consonants', 'vowels', 'other', 'clusters')
     key.groups2key('base', 'infrequent', weight=15)
@@ -24,7 +28,7 @@ def main():
         middle = deromanize.add_reps(key['base'].getallparts(remaider))
         hebword = front + middle + end
         hebword.sort()
-        print(word + ':  ', '\u200E, '.join(i.value for i in hebword))
+        print(word + ':  ', '\u200E, '.join(i.value for i in hebword[:CUTOFF]))
 
 
 if __name__ == '__main__':
