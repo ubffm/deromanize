@@ -31,6 +31,7 @@ class _Empty:
     def __eq__(self, other):
         return isinstance(other, _Empty)
 
+
 empty = _Empty()
 
 
@@ -105,7 +106,6 @@ class Trie:
             return False
         return True
 
-
     def setdefault(self, key, default):
         """like dict.setdefault(). refer to the documentation."""
         try:
@@ -174,6 +174,7 @@ class Trie:
         """
         node = self.root
         value = empty
+        remainder = key
         for i, char in enumerate(key):
             try:
                 node = node[1][char]
@@ -187,7 +188,7 @@ class Trie:
                 value, remainder = node[0], key[i+1:]
 
         if value is empty:
-            raise KeyError(matched_key)
+            raise KeyError(key)
         else:
             return value, remainder
 
@@ -236,7 +237,8 @@ class Replacement:
         """adding one Replacement to another results in them combining their
         weight and string values.
         """
-        return Replacement(self.weight + other.weight, self.value + other.value)
+        return Replacement(self.weight + other.weight,
+                           self.value + other.value)
 
     def __repr__(self):
         return "Replacement({!r}, {!r})".format(self.weight, self.value)
@@ -301,7 +303,6 @@ class TransKey:
                 key.setdefault(k, ReplacementList(k)).extend(v)
         return key
 
-
     def _abstract_reps(self, group, weight=0):
         """Turn groups from a profile data structure (a dictionary with some
         strings and lists) into a dictionary of ReplacementList instances with
@@ -325,7 +326,7 @@ class TransKey:
         self.keymaker(*profile_groups, key=key, weight=weight)
 
     def basekey2new(self, base_key, new_key, *profile_groups, weight=0,
-            endings=False):
+                    endings=False):
         """create a new key from an existing one where the new profile groups
         override the old ones (groups2key appends)
         """
@@ -335,7 +336,7 @@ class TransKey:
         new_base.update(new_updates)
         self[new_key] = treetype(new_base)
 
-    def generatefuzzy(self, fuzzy_key, fuzzy_rep, base_key):
+    def generatefuzzy(self, fuzzy_key, fuzzy_reps, base_key):
         """implement some kind of fuzzy matching for character classes that
         generates all possible matches ahead of time
         """
