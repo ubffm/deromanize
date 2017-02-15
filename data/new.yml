@@ -37,9 +37,9 @@ other:
   "'": "'"
 
 clusters:
-  k'h: כה
-  s'h: סה
-  t's: תס
+  "k'h": כה
+  "s'h": סה
+  "t's": תס
   iyu: יו
   yu: יו
   yu: יו

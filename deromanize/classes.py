@@ -22,6 +22,7 @@ import itertools
 from functools import reduce
 from operator import add
 import re
+import unicodedata
 
 
 class _Empty:
@@ -66,7 +67,7 @@ class Trie:
         node[0] = value
 
     def __repr__(self):
-        return 'Trie(%r)' % dict(self.items())
+        return 'Trie(%r)' % self.dict()
 
     def update(self, dictionary):
         """add new nodes and endpoints from keys and values in a dictionary."""
@@ -168,6 +169,9 @@ class Trie:
         new.root = copy.deepcopy(self.root)
         return new
 
+    def dict(self):
+        return dict(self.items())
+
     def getpart(self, key):
         """takes a key and matches as much of it as possible. returns a tuple
         containing the value of the node and the remainder of the key.
@@ -206,7 +210,7 @@ class SuffixTree(Trie):
     to inherit all it's methods. :(
     """
     def __repr__(self):
-        return 'SuffixTree(%r)' % dict(self.items())
+        return 'SuffixTree(%r)' % self.dict()
 
     def __setitem__(self, key, value):
         super().__setitem__(key[::-1], value)
@@ -286,6 +290,12 @@ class TransKey:
         self.profile = profile
         self.consonants = set(profile['consonants'])
         self.vowels = set(profile['vowels'])
+        self.fuzziez = {}
+        for v in self.vowels:
+            basev = unicodedata.normalize('NFD', v)[0].upper()
+            self.fuzziez.setdefault(basev, set()).add(v)
+        self.fuzziez['C'] = self.consonants
+        self.fuzzies['V'] = self.vowels
         self.keys = {}
 
     def __setitem__(self, key, value):
@@ -331,21 +341,22 @@ class TransKey:
         override the old ones (groups2key appends)
         """
         treetype = SuffixTree if endings else Trie
-        new_base = dict(self[base_key].items())
+        new_base = self[base_key].dict()
         new_updates = self.keymaker(*profile_groups, weight=weight)
         new_base.update(new_updates)
         self[new_key] = treetype(new_base)
 
-    def generatefuzzy(self, fuzzy_key, fuzzy_reps, base_key):
+    def generatefuzzy(self, fuzzy_key, fuzzy_reps, base_key,
+                      weight=0, bad_digraphs=None):
         """implement some kind of fuzzy matching for character classes that
-        generates all possible matches ahead of time
+        generates all possible matches ahead of time.
         """
-        # Function not finished. Still needs some kind of digraph
-        # disambiguation.
         base = self[base_key]
         fuzzy_key = [i for i in re.split('(C|V)', fuzzy_key) if i]
-        fuzzy_rep = [i for i in re.split(r'(\d)', fuzzy_rep) if i]
-
+        if isinstance(fuzzy_reps, str):
+            fuzzy_reps = [fuzzy_reps]
+        fuzzy_reps = [[i for i in re.split(r'(\d)', r) if i]
+                      for r in fuzzy_reps]
         counter = 1
         fuzziez = {}
         blocks = []
@@ -363,18 +374,44 @@ class TransKey:
 
         fuzzy_dict = {}
         for keyparts in itertools.product(*blocks):
-            reps = []
-            for block in fuzzy_rep:
-                try:
-                    reps.append(base[keyparts[fuzziez[int(block)]]])
-                except ValueError:
-                    reps.extend(base.getallparts(block))
-            replacement = add_reps(reps)
-            key = ''.join(keyparts)
-            replacement.key = key
-            fuzzy_dict[key] = replacement
+            key = self.get_sane_key(base, keyparts, bad_digraphs)
+            if key in base:
+                continue
+            for i, fuzzy_rep in enumerate(fuzzy_reps):
+                reps = []
+                for block in fuzzy_rep:
+                    try:
+                        reps.append(base[keyparts[fuzziez[int(block)]]])
+                    except ValueError:
+                        reps.append(
+                            ReplacementList(
+                                '', [Replacement(weight+i, block)]))
+                replacement = add_reps(reps)
+                fuzzy_dict.setdefault(
+                    key, ReplacementList(key)).extend(replacement.data)
 
         return fuzzy_dict
+
+    @staticmethod
+    def get_sane_key(base, keyparts, bad_digraphs):
+        """Helper function for TransKey.generatefuzzy(), so the keys actually make
+        sense.
+        """
+        if not bad_digraphs:
+            return ''.join(keyparts)
+        oldparts = []
+        for part in keyparts:
+            oldparts.extend((i.key for i in base.getallparts(part)))
+        newparts = []
+        for i, part in enumerate(oldparts[:-1]):
+            nextpart = oldparts[i+1]
+            try:
+                newparts.extend([bad_digraphs[part + nextpart]])
+                oldparts[i+1] = ''
+            except (KeyError, IndexError):
+                newparts.append(part)
+        newparts.append(oldparts[-1])
+        return ''.join(newparts)
 
 
 def add_reps(reps):
@@ -383,6 +420,6 @@ def add_reps(reps):
 
 if __name__ == '__main__':
     import yaml
-    prof = yaml.safe_load(open('./data/test.yml'))
+    prof = yaml.safe_load(open('../data/new.yml'))
     key = TransKey(prof)
     key.groups2key('base', 'consonants', 'vowels', 'other', 'clusters')
