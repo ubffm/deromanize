@@ -27,7 +27,8 @@ consonants:
   t: ת
 
 vowels:
-  i: [י, '']
+  #i: [י, '']
+  i: י
   e: ['', י]
   a: ''
   o: [ו, '']
@@ -83,3 +84,9 @@ flattened:
   v: b
   ḵ: k
   f: p
+
+bad_digraphs:
+  kh: "k'h"
+  sh: "s'h"
+  ts: "t's"
+  

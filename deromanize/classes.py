@@ -282,21 +282,34 @@ class ReplacementList(collections.UserList):
         self.data.sort(key=lambda rep: rep.weight)
 
 
+class FuzzyChar:
+    """definitions for the behavior of a fuzzy character class
+
+    """
+    def __init__(self, character_set, base):
+        self.character_set = set(character_set)
+        self.base = base
+
+    def __gettitem__(self, key):
+        return self.base[key]
+
+    def __iter__(self):
+        return iter(self.character_set)
+
+
 class TransKey:
     """an object to build up a transliteration key from a config file. (or
     rather, a python dictionary unmarshalled from a config file.)
     """
-    def __init__(self, profile):
+    def __init__(self, profile, base_key, *args, **kwargs):
         self.profile = profile
         self.consonants = set(profile['consonants'])
         self.vowels = set(profile['vowels'])
-        self.fuzziez = {}
-        for v in self.vowels:
-            basev = unicodedata.normalize('NFD', v)[0].upper()
-            self.fuzziez.setdefault(basev, set()).add(v)
-        self.fuzziez['C'] = self.consonants
-        self.fuzzies['V'] = self.vowels
+        self.fuzzies = {}
         self.keys = {}
+        self.base_key = base_key
+        self.groups2key(base_key, *args, **kwargs)
+        self.base = self[base_key]
 
     def __setitem__(self, key, value):
         self.keys[key] = value
@@ -335,53 +348,52 @@ class TransKey:
         key = self.keys.setdefault(key_name, treetype())
         self.keymaker(*profile_groups, key=key, weight=weight)
 
-    def basekey2new(self, base_key, new_key, *profile_groups, weight=0,
+    def basekey2new(self, new_key, *profile_groups, base_key=None, weight=0,
                     endings=False):
         """create a new key from an existing one where the new profile groups
         override the old ones (groups2key appends)
         """
         treetype = SuffixTree if endings else Trie
-        new_base = self[base_key].dict()
+        new_base = self[base_key or self.base_key].dict()
         new_updates = self.keymaker(*profile_groups, weight=weight)
         new_base.update(new_updates)
         self[new_key] = treetype(new_base)
 
-    def generatefuzzy(self, fuzzy_key, fuzzy_reps, base_key,
+    def generatefuzzy(self, fuzzy_key, fuzzy_reps, base_key=None,
                       weight=0, bad_digraphs=None):
         """implement some kind of fuzzy matching for character classes that
         generates all possible matches ahead of time.
         """
-        base = self[base_key]
-        fuzzy_key = [i for i in re.split('(C|V)', fuzzy_key) if i]
+        base = self[base_key or self.base_key]
+        # parse fuzzy strings
+        fuzzy_key = [i for i in
+                     re.split('(' + '|'.join(self.fuzzies) + ')', fuzzy_key)
+                     if i]
         if isinstance(fuzzy_reps, str):
             fuzzy_reps = [fuzzy_reps]
         fuzzy_reps = [[i for i in re.split(r'(\d)', r) if i]
                       for r in fuzzy_reps]
+        # Turn fuzzy_key in to a list of iterables. make a dict that keeps
+        # track of the indicies of fuzzy characters.
         counter = 1
-        fuzziez = {}
+        fuzzies = {}
         blocks = []
-        for i, c in enumerate(fuzzy_key):
-            if c == 'C':
-                fuzziez[counter] = i
+        for i, part in enumerate(fuzzy_key):
+            try:
+                blocks.append(self.fuzzies[part])
+                fuzzies[counter] = i
                 counter += 1
-                blocks.append(self.consonants)
-            elif c == 'V':
-                fuzziez[counter] = i
-                counter += 1
-                blocks.append(self.vowels)
-            else:
-                blocks.append([c])
-
+            except KeyError:
+                blocks.extend([p.key] for p in base.getallparts(part))
+        # generate replacement lists (and keys) for each product
         fuzzy_dict = {}
         for keyparts in itertools.product(*blocks):
             key = self.get_sane_key(base, keyparts, bad_digraphs)
-            if key in base:
-                continue
             for i, fuzzy_rep in enumerate(fuzzy_reps):
                 reps = []
                 for block in fuzzy_rep:
                     try:
-                        reps.append(base[keyparts[fuzziez[int(block)]]])
+                        reps.append(keyparts[fuzzies[int(block)]])
                     except ValueError:
                         reps.append(
                             ReplacementList(
@@ -392,26 +404,38 @@ class TransKey:
 
         return fuzzy_dict
 
-    @staticmethod
-    def get_sane_key(base, keyparts, bad_digraphs):
+    def get_sane_key(self, base, keyparts, bad_digraphs=None):
         """Helper function for TransKey.generatefuzzy(), so the keys actually make
         sense.
         """
         if not bad_digraphs:
-            return ''.join(keyparts)
+            try:
+                bad_digraphs = self.profile['bad_digraphs']
+            except KeyError:
+                return ''.join(keyparts)
+
         oldparts = []
-        for part in keyparts:
-            oldparts.extend((i.key for i in base.getallparts(part)))
         newparts = []
         for i, part in enumerate(oldparts[:-1]):
             nextpart = oldparts[i+1]
             try:
-                newparts.extend([bad_digraphs[part + nextpart]])
+                newparts.append(bad_digraphs[part + nextpart])
                 oldparts[i+1] = ''
-            except (KeyError, IndexError):
+            except KeyError:
                 newparts.append(part)
         newparts.append(oldparts[-1])
         return ''.join(newparts)
+
+    def fuzzies2key(self, fuzzy_dict, base_key=None,
+                    weight=0, bad_digraphs=None):
+        base_key = base_key or self.base_key
+        new_fuzzies = {}
+        for fuzzy_key, fuzzy_reps in fuzzy_dict.items():
+            new_fuzzies.update(self.generatefuzzy(
+                fuzzy_key, fuzzy_reps, base_key,
+                weight=0, bad_digraphs=None))
+        new_fuzzies.update(self[base_key].dict())
+        self[base_key] = Trie(new_fuzzies)
 
 
 def add_reps(reps):
@@ -423,3 +447,5 @@ if __name__ == '__main__':
     prof = yaml.safe_load(open('../data/new.yml'))
     key = TransKey(prof)
     key.groups2key('base', 'consonants', 'vowels', 'other', 'clusters')
+    key.groups2key('base', 'infrequent', weight=15)
+    key.basekey2new('base', 'front', 'beginning')
