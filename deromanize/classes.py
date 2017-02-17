@@ -19,8 +19,8 @@
 import copy
 import collections
 import itertools
-from functools import reduce
-from operator import add
+import functools
+import operator
 import re
 import unicodedata
 
@@ -290,11 +290,14 @@ class FuzzyChar:
         self.character_set = set(character_set)
         self.base = base
 
-    def __gettitem__(self, key):
+    def __getitem__(self, key):
         return self.base[key]
 
     def __iter__(self):
-        return iter(self.character_set)
+        return (self[c] for c in self.character_set)
+
+    def __repr__(self):
+        return "FuzzyChar(%r)" % self.character_set
 
 
 class TransKey:
@@ -309,7 +312,11 @@ class TransKey:
         self.keys = {}
         self.base_key = base_key
         self.groups2key(base_key, *args, **kwargs)
-        self.base = self[base_key]
+        self.definefuzzychar('C', self.consonants)
+        self.definefuzzychar('V', self.vowels)
+        for v in self.vowels:
+            basev = unicodedata.normalize('NFD', v)[0].upper()
+            self.fuzzies.setdefault(basev, set()).add(v)
 
     def __setitem__(self, key, value):
         self.keys[key] = value
@@ -358,6 +365,10 @@ class TransKey:
         new_updates = self.keymaker(*profile_groups, weight=weight)
         new_base.update(new_updates)
         self[new_key] = treetype(new_base)
+
+    def definefuzzychar(self, char, character_set, base_key=None):
+        base = self[base_key or self.base_key]
+        self.fuzzies[char] = [base[c] for c in character_set]
 
     def generatefuzzy(self, fuzzy_key, fuzzy_reps, base_key=None,
                       weight=0, bad_digraphs=None):
@@ -415,6 +426,11 @@ class TransKey:
                 return ''.join(keyparts)
 
         oldparts = []
+        for p in keyparts:
+            try:
+                oldparts.append(p.key)
+            except AttributeError:
+                oldparts.append(p)
         newparts = []
         for i, part in enumerate(oldparts[:-1]):
             nextpart = oldparts[i+1]
@@ -426,7 +442,7 @@ class TransKey:
         newparts.append(oldparts[-1])
         return ''.join(newparts)
 
-    def fuzzies2key(self, fuzzy_dict, base_key=None,
+    def fuzzies2key(self, target_key, fuzzy_dict, base_key=None,
                     weight=0, bad_digraphs=None):
         base_key = base_key or self.base_key
         new_fuzzies = {}
@@ -434,18 +450,20 @@ class TransKey:
             new_fuzzies.update(self.generatefuzzy(
                 fuzzy_key, fuzzy_reps, base_key,
                 weight=0, bad_digraphs=None))
-        new_fuzzies.update(self[base_key].dict())
-        self[base_key] = Trie(new_fuzzies)
+        new_fuzzies.update(self[target_key].dict())
+        self[target_key] = Trie(new_fuzzies)
 
 
 def add_reps(reps):
-    return reduce(add, reps)
+    try:
+        return functools.reduce(operator.add, reps)
+    except TypeError:
+        return ReplacementList('', [Replacement(0, '')])
 
 
 if __name__ == '__main__':
     import yaml
     prof = yaml.safe_load(open('../data/new.yml'))
-    key = TransKey(prof)
-    key.groups2key('base', 'consonants', 'vowels', 'other', 'clusters')
+    key = TransKey(prof, 'base', 'consonants', 'vowels', 'other', 'clusters')
     key.groups2key('base', 'infrequent', weight=15)
-    key.basekey2new('base', 'front', 'beginning')
+    key.basekey2new('front', 'beginning')

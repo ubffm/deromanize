@@ -20,7 +20,7 @@ consonants:
   p: פ
   f: פ
   ts: צ
-  q: ק
+  ḳ: ק
   r: ר
   ś: ש
   sh: ש
@@ -28,7 +28,7 @@ consonants:
 
 vowels:
   #i: [י, '']
-  i: י
+  i: [י, '']
   e: ['', י]
   a: ''
   o: [ו, '']
@@ -48,6 +48,8 @@ clusters:
   yo: יו
   oy: וי
   iy: יי
+  yi: יי
+  ayi: [י, יי]
   ʾa: א
   aʾ: א
 
@@ -66,15 +68,17 @@ final:
   ts: ץ
   ṿ: ו
   i: י
-  o: [ו, א]
+  i: [י, יא]
+  o: [ו, וא]
   u: ו
   im: ים
   ot: ות
-  it: ית
   enu: ינו
   ayim: [יים, ים]
   aṿ: [יו, ו]
   yah: יה
+  ah: ה
+  eh: ה
 
 beginning:
   y: י

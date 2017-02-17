@@ -6,23 +6,19 @@ import yaml
 
 PROJECT_DIR = os.path.dirname(os.path.dirname(deromanize.__file__))
 CONFIG_FILE = os.path.join(PROJECT_DIR, 'data', 'new.yml')
-CUTOFF = 6
+CUTOFF = 5
 
 
 def main():
     profile = yaml.safe_load(open(CONFIG_FILE))
-    key = deromanize.TransKey(profile)
-    key.groups2key('base', 'consonants', 'vowels', 'other', 'clusters')
+    key = deromanize.TransKey(profile, 'base', 'consonants',
+                              'vowels', 'other', 'clusters')
     key.groups2key('base', 'infrequent', weight=15)
-    key.basekey2new('base', 'endings', 'final', endings=True)
-    key.basekey2new('base', 'beginning', 'beginning')
-    key.fuzzies['C'] = key.consonants
-    key.fuzzies['V'] = key.vowels
-    key.fuzzies2key('beginning', {'CiCC': ['123', '1י23']},
+    key.basekey2new('endings', 'final', endings=True)
+    key.basekey2new('beginning', 'beginning')
+    key.definefuzzychar('F', key.consonants, 'beginning')
+    key.fuzzies2key('beginning', {'FiCC': ['123', '1י23']}, 
                     bad_digraphs=profile['bad_digraphs'])
-    # for v in self.vowels:
-    #     basev = unicodedata.normalize('NFD', v)[0].upper()
-    #     self.fuzzies.setdefault(basev, set()).add(v)
 
     for word in sys.argv[1].lower().split():
         if word[0] in key.vowels:
