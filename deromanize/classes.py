@@ -301,7 +301,8 @@ class TransKey:
         self.fuzzies = {}
         self.keys = {}
         self.base_key = base_key
-        self.groups2key(base_key, *args, **kwargs)
+        if args or kwargs:
+            self.groups2key(base_key, *args, **kwargs)
         self.definefuzzychar('C', self.consonants)
         self.definefuzzychar('V', self.vowels)
         for v in self.vowels:
