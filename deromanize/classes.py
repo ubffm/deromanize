@@ -285,24 +285,6 @@ class ReplacementList(collections.UserList):
         self.data.sort(key=lambda rep: rep.weight)
 
 
-class FuzzyChar:
-    """definitions for the behavior of a fuzzy character class
-
-    """
-    def __init__(self, character_set, base):
-        self.character_set = set(character_set)
-        self.base = base
-
-    def __getitem__(self, key):
-        return self.base[key]
-
-    def __iter__(self):
-        return (self[c] for c in self.character_set)
-
-    def __repr__(self):
-        return "FuzzyChar(%r)" % self.character_set
-
-
 class TransKey:
     """an object to build up a transliteration key from a config file. (or
     rather, a python dictionary unmarshalled from a config file.)
@@ -388,22 +370,13 @@ class TransKey:
             fuzzy_reps = [fuzzy_reps]
         fuzzy_reps = [[i for i in re.split(r'(\d)', r) if i]
                       for r in fuzzy_reps]
-        # Turn fuzzy_key in to a list of iterables. make a dict that keeps
-        # track of the indicies of fuzzy characters.
-        counter = 1
-        fuzzies = {}
-        blocks = []
-        for i, part in enumerate(fuzzy_key):
-            try:
-                blocks.append(self.fuzzies[part])
-                fuzzies[counter] = i
-                counter += 1
-            except KeyError:
-                blocks.extend([p.key] for p in base.getallparts(part))
+
+        blocks, fuzzies = self._parse_key_blocks(fuzzy_key, base)
+
         # generate replacement lists (and keys) for each product
         fuzzy_dict = {}
         for keyparts in itertools.product(*blocks):
-            key = self.get_sane_key(base, keyparts, bad_digraphs)
+            key = self._get_sane_key(base, keyparts, bad_digraphs)
             for i, fuzzy_rep in enumerate(fuzzy_reps):
                 reps = []
                 for block in fuzzy_rep:
@@ -419,9 +392,25 @@ class TransKey:
 
         return fuzzy_dict
 
-    def get_sane_key(self, base, keyparts, bad_digraphs=None):
-        """Helper function for TransKey.generatefuzzy(), so the keys actually make
-        sense.
+    def _parse_key_blocks(self, fuzzy_key, base):
+        """Turn fuzzy_key in to a list of iterables. make a dict that keeps
+        track of the indicies of fuzzy characters.
+        """
+        counter = 1
+        fuzzies = {}
+        blocks = []
+        for i, part in enumerate(fuzzy_key):
+            try:
+                blocks.append(self.fuzzies[part])
+                fuzzies[counter] = i
+                counter += 1
+            except KeyError:
+                blocks.extend([p.key] for p in base.getallparts(part))
+        return blocks, fuzzies
+
+    def _get_sane_key(self, base, keyparts, bad_digraphs=None):
+        """Helper function for TransKey.generatefuzzy(), so the keys actually
+        make sense (i.e. don't create any unintentional digraphs).
         """
         if not bad_digraphs:
             try:
