@@ -16,6 +16,9 @@
 #
 # If you do not alter this notice, a recipient may use your version of
 # this file under either the MPL or the EUPL.
+"""
+Classes, mostly for implementing the TransKey type.
+"""
 import copy
 import collections
 import itertools
@@ -293,7 +296,8 @@ class TransKey:
         self.profile = profile
         self.consonants = set(profile['consonants'])
         self.vowels = set(profile['vowels'])
-        self.allchars = self.consonants | self.vowels | set(profile['other'])
+        self.allchars = (
+            self.consonants | self.vowels | set(profile.get('other', set())))
         self.fuzzies = {}
         self.keys = {}
         self.base_key = base_key
@@ -446,8 +450,19 @@ class TransKey:
         new_fuzzies.update(self[target_key].dict())
         self[target_key] = Trie(new_fuzzies)
 
+    def processor(self, func):
+        """decorator to define the process for decoding words. Basicaly just
+        sugar for separating concerns
+        """
+        @functools.wraps(func)
+        def wrapped(*args, **kwargs):
+            return func(self, *args, **kwargs)
+        setattr(self, func.__name__, wrapped)
+        return wrapped
+
 
 def add_reps(reps):
+    """Add together a bunch of ReplacementLists"""
     try:
         return functools.reduce(operator.add, reps)
     except TypeError:
