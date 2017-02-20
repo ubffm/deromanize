@@ -197,6 +197,9 @@ class Trie:
             return value, remainder
 
     def getallparts(self, key):
+        """loop over a string, splitting the input string up by longest
+        possible matches.
+        """
         results = []
         remainder = key
         while remainder:
@@ -308,6 +311,7 @@ class TransKey:
         self.profile = profile
         self.consonants = set(profile['consonants'])
         self.vowels = set(profile['vowels'])
+        self.allchars = self.consonants | self.vowels | set(profile['other'])
         self.fuzzies = {}
         self.keys = {}
         self.base_key = base_key
