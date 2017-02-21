@@ -454,7 +454,7 @@ class TransKey:
 
     def processor(self, func):
         """decorator to define the process for decoding words. Basicaly just
-        sugar for separating concerns
+        sugar for separating concerns.
         """
         @functools.wraps(func)
         def wrapped(*args, **kwargs):

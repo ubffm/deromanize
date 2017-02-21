@@ -61,6 +61,14 @@ used in the Romanization standard (including digraphs).
   o: [ו, '']
   u: ו
 
+Note:
+  Some letter pairs are reversed on this webpage because of automatic
+  bidi resolution. Most editors also pull these shenanigans, which is
+  great for text, but not great for code. Emacs has options for this,
+  and Vim doesn't even try to fix bidi (though your terminal might). I
+  don't know what kind of options your favorite editor has for falling
+  back to "stupid" LTR text flow when it screws up code readability.
+
 These character classes are hooked into different places to enable some
 fuzzy cluster generation (more on that later), and they can also be used
 to interface with filter generation in the ``filtermaker`` module. If
