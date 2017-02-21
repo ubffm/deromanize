@@ -352,7 +352,7 @@ class TransKey:
         override the old ones (groups2key appends)
         """
         treetype = SuffixTree if suffix else Trie
-        new_base = self[base_key or self.base_key].dict()
+        new_base = copy.deepcopy(self[base_key or self.base_key].dict())
         new_updates = self.keymaker(*profile_groups, weight=weight)
         new_base.update(new_updates)
         self[new_key] = treetype(new_base)
@@ -421,7 +421,13 @@ class TransKey:
             try:
                 bad_digraphs = self.profile['bad_digraphs']
             except KeyError:
-                return ''.join(keyparts)
+                letters = []
+                for p in keyparts:
+                    try:
+                        letters.append(p.key)
+                    except AttributeError:
+                        letters.append(p)
+            return ''.join(letters)
 
         oldparts = []
         for p in keyparts:

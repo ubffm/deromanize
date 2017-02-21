@@ -44,17 +44,21 @@ vowels:
   ă: ''
   ŏ: ''
 
-other:
-    iyyû: יו
+clusters:
+  yû: יו
+  ûy: וי
+  îy: יי
+  yî: יי
 
 infrequent:
   î: א
   ê: א
   ô: א
 
-add initial aleph: true
 
-initial:
+beginning:
+  y: י
+  w: ו
 
 
 vowel errors:

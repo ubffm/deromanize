@@ -16,8 +16,9 @@ key.groups2key('base', 'infrequent', weight=15)
 key.basekey2new('endings', 'final', suffix=True)
 key.basekey2new('beginning', 'beginning')
 key.definefuzzychar('F', key.consonants, 'beginning')
-key.fuzzies2key('beginning', {'FiCC': ['123', '1י23']}, 
+key.fuzzies2key('beginning', {'FiCC': ['123', '1י23']},
                 bad_digraphs=PROFILE['bad_digraphs'])
+key.basekey2new('front')
 
 
 @key.processor
