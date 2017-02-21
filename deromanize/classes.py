@@ -337,21 +337,21 @@ class TransKey:
                     Replacement(i + weight, v) for i, v in enumerate(values))
         return replacements
 
-    def groups2key(self, key_name, *profile_groups, weight=0, endings=False):
+    def groups2key(self, key_name, *profile_groups, weight=0, suffix=False):
         """Add a section from the profile into a character group. If any keys
         already exist in the group, their values will be added to a
         ReplacementList.
         """
-        treetype = SuffixTree if endings else Trie
+        treetype = SuffixTree if suffix else Trie
         key = self.keys.setdefault(key_name, treetype())
         self.keymaker(*profile_groups, key=key, weight=weight)
 
     def basekey2new(self, new_key, *profile_groups, base_key=None, weight=0,
-                    endings=False):
+                    suffix=False):
         """create a new key from an existing one where the new profile groups
         override the old ones (groups2key appends)
         """
-        treetype = SuffixTree if endings else Trie
+        treetype = SuffixTree if suffix else Trie
         new_base = self[base_key or self.base_key].dict()
         new_updates = self.keymaker(*profile_groups, weight=weight)
         new_base.update(new_updates)
@@ -444,10 +444,11 @@ class TransKey:
                     weight=0, bad_digraphs=None):
         base_key = base_key or self.base_key
         new_fuzzies = {}
-        for fuzzy_key, fuzzy_reps in fuzzy_dict.items():
+        for i, parts in enumerate(fuzzy_dict.items()):
+            fuzzy_key, fuzzy_reps = parts
             new_fuzzies.update(self.generatefuzzy(
                 fuzzy_key, fuzzy_reps, base_key,
-                weight=0, bad_digraphs=None))
+                weight=weight+i, bad_digraphs=None))
         new_fuzzies.update(self[target_key].dict())
         self[target_key] = Trie(new_fuzzies)
 
@@ -458,7 +459,6 @@ class TransKey:
         @functools.wraps(func)
         def wrapped(*args, **kwargs):
             return func(self, *args, **kwargs)
-        setattr(self, func.__name__, wrapped)
         return wrapped
 
 
