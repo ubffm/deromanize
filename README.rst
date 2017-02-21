@@ -263,8 +263,7 @@ Perfect!
 ``.processor`` decorator
 ~~~~~~~~~~~~~~~~~~~~~~~~
 It's a bit boring to type all this, so let's turn it into a function.
-``TransKey`` instances come with a decorator that means you don't have
-to pass
+``TransKey`` instances come with a decorator.
 
 .. code:: python
 
