@@ -1,0 +1,44 @@
+#!/usr/bin/env python3
+import sys, unicodedata
+import yaml, deromanize
+
+PROJECT_DIR = os.path.dirname(os.path.dirname(deromanize.__file__))
+CONFIG_FILE = os.path.join(PROJECT_DIR, 'data', 'gk.yml')
+CUTOFF = 5
+PROFILE = yaml.safe_load(open(CONFIG_FILE))
+key = deromanize.TransKey(PROFILE, 'base', 'consonants', 'vowels', 'clusters',
+        'diphthongs')
+key.groups2key('base', 'infrequent', weight=3)
+key.basekey2new('ending', 'final', suffix=True)
+key.basekey2new('front')
+key.definefuzzychar('D', PROFILE['diphthongs'])
+for k, v in PROFILE['front'].items():
+    fuzzies = key.generatefuzzy(k, v, 'base')
+    key['front'].update(fuzzies)
+
+
+
+@key.processor
+def decode(key, word):
+    end, remainder = key['ending'].getpart(word)
+    try:
+        front, remainder = key['front'].getpart(remainder)
+    except KeyError:
+        return end
+    try:
+        middle = key['base'].getallparts(remainder)
+    except KeyError:
+        return front + end
+    return front + deromanize.add_reps(middle) + end
+
+
+def main():
+    for word in sys.argv[1].split():
+        gkword = decode(word)
+        gkword.sort()
+        print(word + ':  ', ', '.join(
+            unicodedata.normalize('NFC', i.value) for i in gkword[:CUTOFF]))
+
+
+if __name__ == '__main__':
+    main()

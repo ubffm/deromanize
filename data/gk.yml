@@ -1,0 +1,72 @@
+consonants:
+  b: β
+  g: γ
+  d: δ
+  z: ζ
+  th: θ
+  k: κ
+  l: λ
+  m: μ
+  n: ν
+  x: ξ
+  p: π
+  r: ρ
+  s: σ
+  t: τ
+  ph: φ
+  ch: χ
+  ps: ψ
+  h: ''
+
+vowels:
+  a: α
+  e: ε
+  ē: η
+  i: ι
+  o: ο
+  y: υ
+  u: υ
+  ō: ω
+
+infrequent:
+  a: ᾳ
+  ē: ῃ
+  ō: ῳ
+
+wierd:
+  '': ''
+
+clusters:
+  ng: γγ
+  nk: γκ
+  nx: γξ
+  nch: γχ
+
+final:
+  s: ς
+  a: [α, ᾳ]
+  ē: [η, ῃ]
+  ō: [ω, ῳ]
+  ho: ὁ
+  hē: [ἡ, ᾑ]
+
+diphthongs:
+  ai: αι
+  au: αυ
+  ei: ει
+  eu: ευ
+  ēy: ηυ
+  ēu: ηυ
+  oi: οι
+  ou: ου
+  yi: υι
+  ui: υι
+  ōy: ωυ
+  ōu: ωυ
+
+
+front:
+  V: 1̓
+  hV: 1̔
+  D: 1̓
+  hD: 1̔
