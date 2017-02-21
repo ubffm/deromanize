@@ -209,8 +209,8 @@ replacements with their weights being combined. Thus:
 Indeed, ``deromanize.add_reps(reps)`` is just a shortcut for
 ``functools.reduce(operator.add, reps)`` with error checking. ``sum()``
 would have worked just as well, but it's only for numeric types. Results
-are not automatically sort, ``ReplacementList`` has a sort method which
-will order the results by weight.
+are not automatically sorted, but ``ReplacementList`` has a sort method
+which will order the results by weight.
 
 Creating a New Key from an Existing Key (and Suffixes)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -295,10 +295,10 @@ Let's look at another example:
    1 רש
 
 Oops! Turns out none of these are right. I forgot that, every now and
-then, the *o* sound in Hebrew can be represented with א (as it is in
-*rosh*, but I don't want that to be the first (or even second) choice in
-most cases. I have this replacement defined in the group ``infrequent``,
-so lets add it:
+then, the *o* sound in Hebrew can be represented with א, as it is in
+*rosh*. However, I don't want that to be the first (or even second)
+choice in most cases. I have this replacement defined in the group
+``infrequent``, so lets add it:
 
 .. code:: python
 
@@ -311,8 +311,7 @@ so lets add it:
 
 Better! Now, this unlikely Replacement appears, but it is weighted
 heavily, so such variations will usually be at the bottom of the
-list.this unlikely Replacement appears, but it is weighted heavily, so
-such variations will usually be at the bottom of the list.
+list.
 
 *rishon* is a similar kind of word, so let's see what happens:
 
