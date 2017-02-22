@@ -418,15 +418,12 @@ class TransKey:
         make sense (i.e. don't create any unintentional digraphs).
         """
         if not bad_digraphs:
-            try:
-                bad_digraphs = self.profile['bad_digraphs']
-            except KeyError:
-                letters = []
-                for p in keyparts:
-                    try:
-                        letters.append(p.key)
-                    except AttributeError:
-                        letters.append(p)
+            letters = []
+            for p in keyparts:
+                try:
+                    letters.append(p.key)
+                except AttributeError:
+                    letters.append(p)
             return ''.join(letters)
 
         oldparts = []
