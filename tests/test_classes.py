@@ -1,7 +1,5 @@
-import sys
-from functools import reduce
-from operator import add
-from deromanize import classes
+#!/usr/bin/env pytest
+import deromanize
 import pytest
 import yaml
 
@@ -25,24 +23,26 @@ def profile():
 
 @pytest.fixture
 def trie():
-    return classes.Trie(profile())
+    return deromanize.Trie(profile())
 
 
 @pytest.fixture
 def suffixtree():
-    return classes.SuffixTree(profile())
+    return deromanize.SuffixTree(profile())
+
 
 @pytest.fixture
 def rep():
-    return (classes.Replacement(2, 'foo'),
-            classes.Replacement(3, 'bar'),
-            classes.Replacement(4, 'spam'),
-            classes.Replacement(5, 'eggs'))
+    return (deromanize.Replacement(2, 'foo'),
+            deromanize.Replacement(3, 'bar'),
+            deromanize.Replacement(4, 'spam'),
+            deromanize.Replacement(5, 'eggs'))
+
 
 @pytest.fixture
-def basekey():
-    key = classes.TransKey(PROFILE)
-    key.groups2key('base', 'consonants', 'vowels', 'clusters')
+def key():
+    key = deromanize.TransKey(
+        PROFILE, 'base', 'consonants', 'vowels', 'clusters')
     return key
 
 #####################
@@ -94,24 +94,24 @@ def test_replacement_addition(rep):
 
 
 def test_replacement_list_addition(rep):
-    rlist1 = classes.ReplacementList('baz', [rep[0], rep[1]])
-    rlist2 = classes.ReplacementList('fjords', [rep[2], rep[3]])
+    rlist1 = deromanize.ReplacementList('baz', [rep[0], rep[1]])
+    rlist2 = deromanize.ReplacementList('fjords', [rep[2], rep[3]])
     rlist3 = rlist1 + rlist2
     rlist3.sort()
     print(rlist3)
     assert str(rlist3) == (
             'bazfjords:\n 6 foospam\n 7 fooeggs\n 7 barspam\n 8 bareggs')
-    rlist4 = classes.add_reps((rlist1, rlist2))
+    rlist4 = deromanize.add_reps((rlist1, rlist2))
     rlist4.sort()
     assert str(rlist4) == str(rlist3)
 
 
-def test_transkey(basekey):
-    rep = classes.add_reps(basekey['base'].getallparts('shalom'))
+def test_transkey(key):
+    rep = deromanize.add_reps(key['base'].getallparts('shalom'))
     print(rep)
     assert str(rep) == 'shalom:\n 0 שלומ\n 1 שלמ'
-    basekey.basekey2new('base', 'endings', 'final', endings=True)
-    rep = classes.add_reps(basekey['endings'].getallparts('shalom'))
-    assert isinstance(basekey['endings'], classes.SuffixTree)
+    key.basekey2new('endings', 'final', suffix=True)
+    rep = deromanize.add_reps(key['endings'].getallparts('shalom'))
+    assert isinstance(key['endings'], deromanize.SuffixTree)
     print(rep)
     assert str(rep) == 'shalom:\n 0 שלום'
