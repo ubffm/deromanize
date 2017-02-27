@@ -465,12 +465,16 @@ class TransKey:
         return wrapped
 
 
+def get_empty_replist():
+    return ReplacementList('', [Replacement(0, '')])
+
+
 def add_reps(reps):
     """Add together a bunch of ReplacementLists"""
     try:
         return functools.reduce(operator.add, reps)
     except TypeError:
-        return ReplacementList('', [Replacement(0, '')])
+        return get_empty_replist()
 
 
 if __name__ == '__main__':
