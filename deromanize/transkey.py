@@ -298,16 +298,16 @@ class TransKey:
         self.vowels = set(profile['vowels'])
         self.allchars = (
             self.consonants | self.vowels | set(profile.get('other', set())))
-        self.fuzzies = {}
+        self.charactersets = {}
         self.keys = {}
         self.base_key = base_key
         if args or kwargs:
             self.groups2key(base_key, *args, **kwargs)
-        self.definefuzzychar('C', self.consonants)
-        self.definefuzzychar('V', self.vowels)
+        self.definecharset('C', self.consonants)
+        self.definecharset('V', self.vowels)
         for v in self.vowels:
             basev = unicodedata.normalize('NFD', v)[0].upper()
-            self.fuzzies.setdefault(basev, set()).add(v)
+            self.charactersets.setdefault(basev, set()).add(v)
 
     def __setitem__(self, key, value):
         self.keys[key] = value
@@ -357,20 +357,21 @@ class TransKey:
         new_base.update(new_updates)
         self[new_key] = treetype(new_base)
 
-    def definefuzzychar(self, char, character_set, base_key=None):
+    def definecharset(self, char, character_set, base_key=None):
         base = self[base_key or self.base_key]
-        self.fuzzies[char] = [base[c] for c in character_set]
+        self.charactersets[char] = [base[c] for c in character_set]
 
     def generatefuzzy(self, fuzzy_key, fuzzy_reps, base_key=None,
                       weight=0, bad_digraphs=None):
-        """implement some kind of fuzzy matching for character classes that
+        """implement some kind of pattern matching for character classes that
         generates all possible matches ahead of time.
         """
         base = self[base_key or self.base_key]
         # parse fuzzy strings
-        fuzzy_key = [i for i in
-                     re.split('(' + '|'.join(self.fuzzies) + ')', fuzzy_key)
-                     if i]
+        fuzzy_key = [
+            i for i in
+            re.split('(' + '|'.join(self.charactersets) + ')', fuzzy_key)
+            if i]
         if isinstance(fuzzy_reps, str):
             fuzzy_reps = [fuzzy_reps]
         fuzzy_reps = [[i for i in re.split(r'(\d)', r) if i]
@@ -406,7 +407,7 @@ class TransKey:
         blocks = []
         for i, part in enumerate(fuzzy_key):
             try:
-                blocks.append(self.fuzzies[part])
+                blocks.append(self.charactersets[part])
                 fuzzies[counter] = i
                 counter += 1
             except KeyError:

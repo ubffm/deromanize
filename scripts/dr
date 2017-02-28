@@ -15,10 +15,9 @@ key = deromanize.TransKey(PROFILE, 'base', 'consonants',
 key.groups2key('base', 'infrequent', weight=15)
 key.basekey2new('endings', 'final', suffix=True)
 key.basekey2new('beginning', 'beginning')
-key.definefuzzychar('F', key.consonants, 'beginning')
+key.definecharset('F', key.consonants, 'beginning')
 key.fuzzies2key('beginning', {'FiCC': ['123', '1י23']},
-                bad_digraphs=PROFILE['bad_digraphs'])
-key.basekey2new('front')
+                  bad_digraphs=PROFILE['bad_digraphs'])
 
 
 @key.processor
@@ -44,7 +43,8 @@ def decode(key, word):
 def main():
     for word in sys.argv[1].lower().split():
         hebword = decode(word)
-        print(word + ':  ', '\u200E, '.join(i.value for i in hebword[:CUTOFF]))
+        # print(word + ':  ', '\u200E, '.join(i.value for i in hebword[:CUTOFF]))
+        print(hebword)
 
 if __name__ == '__main__':
     main()

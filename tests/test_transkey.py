@@ -55,11 +55,12 @@ def test_trie_getting(profile, trie):
         trie['']
     assert trie._getnode('') is trie.root
     assert trie.getpart('shalom') == (profile['sh'], 'alom')
-    assert trie.getallparts('shalom') == [profile['sh'],
-                                          profile['a'],
-                                          profile['l'],
-                                          profile['o'],
-                                          profile['m']]
+    assert trie.getallparts('shalom') == [
+        profile['sh'],
+        profile['a'],
+        profile['l'],
+        profile['o'],
+        profile['m']]
 
 
 def test_trie_integ(profile, trie):
@@ -115,3 +116,7 @@ def test_transkey(key):
     assert isinstance(key['endings'], deromanize.SuffixTree)
     print(rep)
     assert str(rep) == 'shalom:\n 0 שלום'
+
+
+def test_pattern_gen(key):
+    passe
