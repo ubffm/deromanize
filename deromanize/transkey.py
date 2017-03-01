@@ -257,6 +257,12 @@ class Replacement:
         return self.value
 
 
+class StatRep(Replacement):
+    def __add__(self, other):
+        return StatRep(self.weight * other.weight,
+                       self.value + other.value)
+
+
 class ReplacementList(collections.UserList):
     """a list of Replacements with a .key attribute containing the key to which
     they belong
@@ -284,8 +290,8 @@ class ReplacementList(collections.UserList):
             string += '\n{:2} {}'.format(r.weight, r.value)
         return string
 
-    def sort(self):
-        self.data.sort(key=lambda rep: rep.weight)
+    def sort(self, reverse=False, key=lambda rep: rep.weight):
+        self.data.sort(key=key, reverse=reverse)
 
 
 class TransKey:
@@ -464,6 +470,23 @@ class TransKey:
         def wrapped(*args, **kwargs):
             return func(self, *args, **kwargs)
         return wrapped
+
+    def get_stat_part(self, key, string):
+        reps, remainder = self[key].getpart(string)
+        max_i = max(i.weight for i in reps) + 1
+        intermediate = [(max_i - i.weight, i.value) for i in reps]
+        total = sum(i[0] for i in intermediate)
+        return (ReplacementList(
+            reps.key, [StatRep(i[0]/total, i[1]) for i in intermediate]),
+                remainder)
+
+    def get_all_stat_parts(self, key, string):
+        results = []
+        remainder = string
+        while remainder:
+            value, remainder = self.get_stat_part(key, remainder)
+            results.append(value)
+        return results
 
 
 def get_empty_replist():
