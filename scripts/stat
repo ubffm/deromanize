@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+import os
+import sys
+import deromanize
+import yaml
+
+PROJECT_DIR = os.path.dirname(os.path.dirname(deromanize.__file__))
+CONFIG_FILE = os.path.join(PROJECT_DIR, 'data', 'new.yml')
+CUTOFF = 5
+PROFILE = yaml.safe_load(open(CONFIG_FILE))
+
+# define the key
+key = deromanize.TransKey(PROFILE, 'base', 'consonants',
+                          'vowels', 'other', 'clusters')
+key.groups2key('base', 'infrequent', weight=15)
+key.basekey2new('endings', 'final', suffix=True)
+key.basekey2new('beginning', 'beginning')
+key.definecharset('F', key.consonants, 'beginning')
+key.fuzzies2key('beginning', {'FiCC': ['123', '1י23']},
+                bad_digraphs=PROFILE['bad_digraphs'])
+
+
+@key.processor
+def decode(key, word):
+    # add aleph to words that begin with vowels.
+    if word[0] in key.vowels:
+        word = 'ʾ' + word
+    # remove doubled letters
+    newword = ''
+    for i, c in enumerate(word):
+        if i == 0 or c != word[i-1]:
+            newword += c
+    # get ending clusters, then beginning clusters, then whatever's left in the
+    # middle.
+    end, remaider = key.get_stat_part('endings', word)
+    front, remaider = key.get_stat_part('beginning', remaider)
+    middle = deromanize.add_reps(key.get_all_stat_parts('base', remaider))
+    hebword = front + middle + end
+    hebword.sort(reverse=True)
+    return hebword
+
+
+def main():
+    for word in sys.argv[1].lower().split():
+        hebword = decode(word)
+        # print(word + ':  ', '\u200E, '.join(i.value for i in hebword[:CUTOFF]))
+        print(hebword.key + ':')
+        for i in hebword:
+            print('{:10.2}'.format(i.weight),
+                  i.value)
+
+if __name__ == '__main__':
+    main()
