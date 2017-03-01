@@ -20,7 +20,7 @@
 Classes, mostly for implementing the TransKey type.
 """
 import copy
-import collections
+from collections import abc
 import itertools
 import functools
 import operator
@@ -263,13 +263,44 @@ class StatRep(Replacement):
                        self.value + other.value)
 
 
-class ReplacementList(collections.UserList):
+class ReplacementList(abc.MutableSequence):
     """a list of Replacements with a .key attribute containing the key to which
     they belong
     """
+    reptype = Replacement
     def __init__(self, key, values: list=None):
         self.key = key
-        self.data = values if values is not None else []
+        self.data = []
+        if values is not None:
+            self.extend(values)
+
+    @staticmethod
+    def _prep_value(i, value):
+        if isinstance(value, Replacement):
+            return value
+        elif isinstance(value, tuple) and len(value) == 2:
+            return Replacement(*value)
+        elif isinstance(value, str):
+            return Replacement(i, value)
+        else:
+            raise TypeError(
+                '%s is not supported for insertion in ReplacementList'
+                % type(value))
+
+    def __setitem__(self, i, value):
+        self.data[i] = self._prep_value(i, value)
+
+    def __getitem__(self, i):
+        return self.data[i]
+
+    def __delitem__(self, i):
+        del self.data[i]
+
+    def __len__(self):
+        return len(self.data)
+
+    def insert(self, i, value):
+        self.data.insert(i, self._prep_value(i, value))
 
     def __add__(self, other):
         """When two ReplacementList instances are added together, the keys are
@@ -282,7 +313,12 @@ class ReplacementList(collections.UserList):
         return ReplacementList(key, composite_values)
 
     def __repr__(self):
-        return "ReplacementList({!r}, {!r})".format(self.key, self.data)
+        string = "ReplacementList({!r}, [".format(self.key)
+        if not self.data:
+            return string + '])'
+        for i in self:
+            string += '(%r, %r), ' % (i.weight, i.value)
+        return string[:-2] + '])'
 
     def __str__(self):
         string = self.key + ':'
@@ -340,7 +376,7 @@ class TransKey:
             if isinstance(values, str):
                 values = [values]
             replacements.setdefault(key, ReplacementList(key)).extend(
-                    Replacement(i + weight, v) for i, v in enumerate(values))
+                (i + weight, v) for i, v in enumerate(values))
         return replacements
 
     def groups2key(self, key_name, *profile_groups, weight=0, suffix=False):
@@ -503,7 +539,7 @@ def add_reps(reps):
 
 if __name__ == '__main__':
     import yaml
-    prof = yaml.safe_load(open('../data/new.yml'))
+    prof = yaml.safe_load(open('data/new.yml'))
     key = TransKey(prof, 'base', 'consonants', 'vowels', 'other', 'clusters')
     key.groups2key('base', 'infrequent', weight=15)
     key.basekey2new('front', 'beginning')
