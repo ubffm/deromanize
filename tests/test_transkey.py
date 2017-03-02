@@ -1,5 +1,6 @@
 #!/usr/bin/env pytest
 import deromanize
+import deromanize.transkey as tk
 import pytest
 import yaml
 
@@ -23,12 +24,12 @@ def profile():
 
 @pytest.fixture
 def trie():
-    return deromanize.Trie(profile())
+    return tk.Trie(profile())
 
 
 @pytest.fixture
 def suffixtree():
-    return deromanize.SuffixTree(profile())
+    return tk.SuffixTree(profile())
 
 
 @pytest.fixture
@@ -113,10 +114,10 @@ def test_transkey(key):
     assert str(rep) == 'shalom:\n 0 שלומ\n 1 שלמ'
     key.basekey2new('endings', 'final', suffix=True)
     rep = deromanize.add_reps(key['endings'].getallparts('shalom'))
-    assert isinstance(key['endings'], deromanize.SuffixTree)
+    assert isinstance(key['endings'], tk.SuffixTree)
     print(rep)
     assert str(rep) == 'shalom:\n 0 שלום'
 
 
 def test_pattern_gen(key):
-    passe
+    pass
