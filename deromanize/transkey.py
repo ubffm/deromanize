@@ -236,7 +236,23 @@ class SuffixTree(Trie):
 
 
 class ReplacementTrie(Trie):
-    pass
+    def set(self, key, value, weight=None):
+        self[key] = self._ensurereplist(key, value, weight)
+
+    def update(self, dictionary, weight=None):
+        for k, v in dictionary:
+            self.set(k, v, weight)
+
+    @staticmethod
+    def _ensurereplist(key, value, weight=None):
+        if isinstance(value, ReplacementList):
+            if weight is not None:
+                raise TypeError('ReplacementList input cannot be used with '
+                                'weight argument')
+            return value
+        elif not isinstance(value, list):
+            value = [value]
+        return ReplacementList(key, value, weight=weight)
 
 
 class Replacement:
