@@ -235,6 +235,10 @@ class SuffixTree(Trie):
         return super().getallparts(key)[::-1]
 
 
+class ReplacementTrie(Trie):
+    pass
+
+
 class Replacement:
     """a type for holding a replacement and it's weight. A Replacment on its
     own doesn't know what it's replacing. It should be an item in a
@@ -268,6 +272,7 @@ class ReplacementList(abc.MutableSequence):
     they belong
     """
     reptype = Replacement
+
     def __init__(self, key, values: list=None):
         self.key = key
         self.data = []
@@ -302,6 +307,15 @@ class ReplacementList(abc.MutableSequence):
     def insert(self, i, value):
         self.data.insert(i, self._prep_value(i, value))
 
+    def extend(self, iterable, weight=None):
+        if weight is None:
+            super().extend(iterable)
+        else:
+            for i, value in enumerate(iterable):
+                rep = self._prep_value(i, value)
+                rep.weight += weight
+                self.data.append(rep)
+
     def __add__(self, other):
         """When two ReplacementList instances are added together, the keys are
         concatinated, and all combinations of the replacements are also added
@@ -317,7 +331,7 @@ class ReplacementList(abc.MutableSequence):
         if not self.data:
             return string + '])'
         for i in self:
-            string += '(%r, %r), ' % (i.weight, i.value)
+            string += '%r, ' % (i.weight, i.value)
         return string[:-2] + '])'
 
     def __str__(self):
@@ -326,8 +340,8 @@ class ReplacementList(abc.MutableSequence):
             string += '\n{:2} {}'.format(r.weight, r.value)
         return string
 
-    def sort(self, reverse=False, key=lambda rep: rep.weight):
-        self.data.sort(key=key, reverse=reverse)
+    def sort(self, reverse=False, key=lambda rep: rep.weight, *args, **kwargs):
+        self.data.sort(key=key, reverse=reverse, *args, **kwargs)
 
 
 class TransKey:
@@ -357,7 +371,7 @@ class TransKey:
     def __getitem__(self, key):
         return self.keys[key]
 
-    def keymaker(self, *profile_groups, key=None, weight=0):
+    def keymaker(self, *profile_groups, key=None, weight=None):
         key = {} if key is None else key
         for group in profile_groups:
             abstracted = self._abstract_reps(group, weight)
@@ -366,7 +380,7 @@ class TransKey:
                 key.setdefault(k, ReplacementList(k)).extend(v)
         return key
 
-    def _abstract_reps(self, group, weight=0):
+    def _abstract_reps(self, group, weight=None):
         """Turn groups from a profile data structure (a dictionary with some
         strings and lists) into a dictionary of ReplacementList instances with
         weighted replacements.
@@ -375,11 +389,11 @@ class TransKey:
         for key, values in self.profile[group].items():
             if isinstance(values, str):
                 values = [values]
-            replacements.setdefault(key, ReplacementList(key)).extend(
-                (i + weight, v) for i, v in enumerate(values))
+            replacements.setdefault(key, ReplacementList(key)
+                                    ).extend(values, weight=weight)
         return replacements
 
-    def groups2key(self, key_name, *profile_groups, weight=0, suffix=False):
+    def groups2key(self, key_name, *profile_groups, weight=None, suffix=False):
         """Add a section from the profile into a character group. If any keys
         already exist in the group, their values will be added to a
         ReplacementList.
@@ -388,7 +402,7 @@ class TransKey:
         key = self.keys.setdefault(key_name, treetype())
         self.keymaker(*profile_groups, key=key, weight=weight)
 
-    def basekey2new(self, new_key, *profile_groups, base_key=None, weight=0,
+    def basekey2new(self, new_key, *profile_groups, base_key=None, weight=None,
                     suffix=False):
         """create a new key from an existing one where the new profile groups
         override the old ones (groups2key appends)
@@ -431,12 +445,10 @@ class TransKey:
                     try:
                         reps.append(keyparts[fuzzies[int(block)]])
                     except ValueError:
-                        reps.append(
-                            ReplacementList(
-                                '', [Replacement(weight+i, block)]))
+                        reps.append(ReplacementList('', [(i, block)]))
                 replacement = add_reps(reps)
                 fuzzy_dict.setdefault(
-                    key, ReplacementList(key)).extend(replacement.data)
+                    key, ReplacementList(key)).extend(replacement.data, weight)
 
         return fuzzy_dict
 
@@ -487,14 +499,13 @@ class TransKey:
         return ''.join(newparts)
 
     def fuzzies2key(self, target_key, fuzzy_dict, base_key=None,
-                    weight=0, bad_digraphs=None):
+                    weight=None, bad_digraphs=None):
         base_key = base_key or self.base_key
         new_fuzzies = {}
-        for i, parts in enumerate(fuzzy_dict.items()):
-            fuzzy_key, fuzzy_reps = parts
+        for fuzzy_key, fuzzy_reps in fuzzy_dict.items():
             new_fuzzies.update(self.generatefuzzy(
                 fuzzy_key, fuzzy_reps, base_key,
-                weight=weight+i, bad_digraphs=None))
+                weight=weight, bad_digraphs=None))
         new_fuzzies.update(self[target_key].dict())
         self[target_key] = Trie(new_fuzzies)
 
