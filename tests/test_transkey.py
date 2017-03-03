@@ -112,7 +112,7 @@ def test_transkey(key):
     rep = deromanize.add_reps(key['base'].getallparts('shalom'))
     print(rep)
     assert str(rep) == 'shalom:\n 0 שלומ\n 1 שלמ'
-    key.basekey2new('endings', 'final', suffix=True)
+    key.new('endings', 'final', base='base', suffix=True)
     rep = deromanize.add_reps(key['endings'].getallparts('shalom'))
     assert isinstance(key['endings'], tk.SuffixTree)
     print(rep)

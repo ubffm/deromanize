@@ -8,10 +8,10 @@ CUTOFF = 5
 PROFILE = yaml.safe_load(open(CONFIG_FILE))
 key = deromanize.TransKey(PROFILE, 'base', 'consonants', 'vowels', 'clusters',
         'diphthongs')
-key.groups2key('base', 'infrequent', weight=3)
-key.basekey2new('ending', 'final', suffix=True)
-key.basekey2new('front')
-key.definefuzzychar('D', PROFILE['diphthongs'])
+key.extend('base', 'infrequent', weight=3)
+key.base2new('ending', 'final', suffix=True)
+key.base2new('front')
+key.definecharset('D', PROFILE['diphthongs'])
 for k, v in PROFILE['front'].items():
     fuzzies = key.generatefuzzy(k, v, 'base')
     key['front'].update(fuzzies)

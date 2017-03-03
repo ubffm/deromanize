@@ -395,7 +395,7 @@ class TransKey:
         self.keys = {}
         self.base_key = base_key
         if args or kwargs:
-            self.groups2key(base_key, *args, **kwargs)
+            self.new(base_key, *args, **kwargs)
         self.definecharset('C', self.consonants)
         self.definecharset('V', self.vowels)
         for v in self.vowels:
@@ -408,47 +408,22 @@ class TransKey:
     def __getitem__(self, key):
         return self.keys[key]
 
-    def keymaker(self, *profile_groups, key=None, weight=None):
-        key = {} if key is None else key
-        for group in profile_groups:
-            abstracted = self._abstract_reps(group, weight)
-
-            for k, v in abstracted.items():
-                key.setdefault(k, ReplacementList(k)).extend(v)
+    def new(self, key_name, *profile_groups,
+            base=None, weight=None, suffix=False):
+        key = ReplacementSuffixTree() if suffix else ReplacementTrie()
+        if base is not None:
+            key.update(copy.deepcopy(self[base].dict()))
+        for g in profile_groups:
+            key.update(self.profile[g], weight)
+        self[key_name] = key
         return key
 
-    def _abstract_reps(self, group, weight=None):
-        """Turn groups from a profile data structure (a dictionary with some
-        strings and lists) into a dictionary of ReplacementList instances with
-        weighted replacements.
-        """
-        replacements = {}
-        for key, values in self.profile[group].items():
-            if isinstance(values, str):
-                values = [values]
-            replacements.setdefault(key, ReplacementList(key)
-                                    ).extend(values, weight=weight)
-        return replacements
+    def base2new(self, *args, **kwargs):
+        return self.new(*args,base=self.base_key, **kwargs)
 
-    def groups2key(self, key_name, *profile_groups, weight=None, suffix=False):
-        """Add a section from the profile into a character group. If any keys
-        already exist in the group, their values will be added to a
-        ReplacementList.
-        """
-        treetype = SuffixTree if suffix else Trie
-        key = self.keys.setdefault(key_name, treetype())
-        self.keymaker(*profile_groups, key=key, weight=weight)
-
-    def basekey2new(self, new_key, *profile_groups, base_key=None, weight=None,
-                    suffix=False):
-        """create a new key from an existing one where the new profile groups
-        override the old ones (groups2key appends)
-        """
-        treetype = SuffixTree if suffix else Trie
-        new_base = copy.deepcopy(self[base_key or self.base_key].dict())
-        new_updates = self.keymaker(*profile_groups, weight=weight)
-        new_base.update(new_updates)
-        self[new_key] = treetype(new_base)
+    def extend(self, key_name, *profile_groups, weight=None):
+        for g in profile_groups:
+            self[key_name].extend(self.profile[g], weight)
 
     def definecharset(self, char, character_set, base_key=None):
         base = self[base_key or self.base_key]
