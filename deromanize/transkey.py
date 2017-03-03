@@ -48,6 +48,8 @@ class Trie:
     a lot of the same methods and behaviors as a dictionary, along with special
     methods for use with transliteration stuff.
     """
+    template = 'Trie(%r)'
+
     def __init__(self, dictionary=None):
         """Trie([dictionary])
 
@@ -70,7 +72,7 @@ class Trie:
         node[0] = value
 
     def __repr__(self):
-        return 'Trie(%r)' % self.dict()
+        return self.template % self.dict()
 
     def update(self, dictionary):
         """add new nodes and endpoints from keys and values in a dictionary."""
@@ -172,8 +174,8 @@ class Trie:
         new.root = copy.deepcopy(self.root)
         return new
 
-    def dict(self):
-        return dict(self.items())
+    def dict(self, key=None):
+        return dict(self.items(key))
 
     def getpart(self, key):
         """takes a key and matches as much of it as possible. returns a tuple
@@ -215,8 +217,7 @@ class SuffixTree(Trie):
     """Subclass of Trie that shouldn't technically be. I just want a cheap way
     to inherit all it's methods. :(
     """
-    def __repr__(self):
-        return 'SuffixTree(%r)' % self.dict()
+    template = 'SuffixTree(%r)'
 
     def __setitem__(self, key, value):
         super().__setitem__(key[::-1], value)
@@ -236,23 +237,39 @@ class SuffixTree(Trie):
 
 
 class ReplacementTrie(Trie):
-    def set(self, key, value, weight=None):
-        self[key] = self._ensurereplist(key, value, weight)
+    template = 'ReplacementTrie(%r)'
+
+    def __repr__(self):
+        return self.template % self.simplfied()
+
+    def __setitem__(self, key, value, weight=None):
+        super().__setitem__(key, self._ensurereplist(key, value, weight))
 
     def update(self, dictionary, weight=None):
-        for k, v in dictionary:
-            self.set(k, v, weight)
+        for k, v in dictionary.items():
+            self.__setitem__(k, v, weight)
+
+    def extend(self, dictionary, weight=None):
+        for k, v in dictionary.items():
+            self.setdefault(k, ReplacementList(k)).extend(v, weight)
+
+    def simplfy(self):
+        return {k: [(i.weight, i.value) for i in v.data]
+                for k, v in self.items()}
 
     @staticmethod
     def _ensurereplist(key, value, weight=None):
         if isinstance(value, ReplacementList):
             if weight is not None:
-                raise TypeError('ReplacementList input cannot be used with '
-                                'weight argument')
+                value.add_weight(weight)
             return value
-        elif not isinstance(value, list):
+        elif not isinstance(value, list) or isinstance(value[0], int):
             value = [value]
-        return ReplacementList(key, value, weight=weight)
+        return ReplacementList(key, value, weight)
+
+
+class ReplacementSuffixTree(ReplacementTrie, SuffixTree):
+    template = 'ReplacementSuffixTree(%r)'
 
 
 class Replacement:
@@ -289,11 +306,11 @@ class ReplacementList(abc.MutableSequence):
     """
     reptype = Replacement
 
-    def __init__(self, key, values: list=None):
+    def __init__(self, key, values: list=None, weight=None):
         self.key = key
         self.data = []
         if values is not None:
-            self.extend(values)
+            self.extend(values, weight)
 
     @staticmethod
     def _prep_value(i, value):
@@ -332,6 +349,10 @@ class ReplacementList(abc.MutableSequence):
                 rep.weight += weight
                 self.data.append(rep)
 
+    def add_weight(self, weight):
+        for i in self:
+            i.weight += weight
+
     def __add__(self, other):
         """When two ReplacementList instances are added together, the keys are
         concatinated, and all combinations of the replacements are also added
@@ -347,7 +368,7 @@ class ReplacementList(abc.MutableSequence):
         if not self.data:
             return string + '])'
         for i in self:
-            string += '%r, ' % (i.weight, i.value)
+            string += '%r, ' % ((i.weight, i.value),)
         return string[:-2] + '])'
 
     def __str__(self):
