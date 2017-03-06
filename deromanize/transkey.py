@@ -170,7 +170,7 @@ class Trie:
         a deep copy, because that is the only sane way to copy a tree. Be aware
         that it's not the cheapest operation.
         """
-        new = Trie()
+        new = type(self)()
         new.root = copy.deepcopy(self.root)
         return new
 
@@ -239,11 +239,20 @@ class SuffixTree(Trie):
 class ReplacementTrie(Trie):
     template = 'ReplacementTrie(%r)'
 
+    def __init__(self, dictionary=None, parent=None):
+        super().__init__(dictionary)
+        self.parent = parent
+
     def __repr__(self):
-        return self.template % self.simplfied()
+        return self.template % self.simplify()
 
     def __setitem__(self, key, value, weight=None):
         super().__setitem__(key, self._ensurereplist(key, value, weight))
+
+    def copy(self):
+        new = super().copy()
+        new.parent = self.parent
+        return new
 
     def update(self, dictionary, weight=None):
         for k, v in dictionary.items():
@@ -253,8 +262,9 @@ class ReplacementTrie(Trie):
         for k, v in dictionary.items():
             self.setdefault(k, ReplacementList(k)).extend(v, weight)
 
-    def simplfy(self):
-        return {k: [(i.weight, i.value) for i in v.data]
+    def simplify(self):
+        return {k: [((i.weight, i.value) if i.weight else i.value)
+                    for i in v.data]
                 for k, v in self.items()}
 
     @staticmethod
@@ -380,12 +390,23 @@ class ReplacementList(abc.MutableSequence):
     def sort(self, reverse=False, key=lambda rep: rep.weight, *args, **kwargs):
         self.data.sort(key=key, reverse=reverse, *args, **kwargs)
 
+    def prune(self, reverse=False):
+        self.sort(reverse)
+        repeats = []
+        seen = set()
+        for i, rep in enumerate(self):
+            if rep.value in seen:
+                repeats.append(i)
+            seen.add(rep.value)
+        for i in repeats[::-1]:
+            self.data.remove(i)
+
 
 class TransKey:
     """an object to build up a transliteration key from a config file. (or
     rather, a python dictionary unmarshalled from a config file.)
     """
-    def __init__(self, profile, base_key, *args, **kwargs):
+    def __init__(self, profile, base_key=None, *args, **kwargs):
         self.profile = profile
         self.consonants = set(profile['consonants'])
         self.vowels = set(profile['vowels'])
@@ -412,18 +433,27 @@ class TransKey:
             base=None, weight=None, suffix=False):
         key = ReplacementSuffixTree() if suffix else ReplacementTrie()
         if base is not None:
-            key.update(copy.deepcopy(self[base].dict()))
+            if isinstance(base, str):
+                base = self[base]
+            if type(base) is type(key):
+                key = base.copy()
+            else:
+                key.update(copy.deepcopy(self[base].dict()))
         for g in profile_groups:
             key.update(self.profile[g], weight)
         self[key_name] = key
         return key
 
     def base2new(self, *args, **kwargs):
-        return self.new(*args,base=self.base_key, **kwargs)
+        return self.new(*args, base=self.base_key, **kwargs)
 
     def extend(self, key_name, *profile_groups, weight=None):
         for g in profile_groups:
             self[key_name].extend(self.profile[g], weight)
+
+    def update(self, key_name, *profile_groups, weight=None):
+        for g in profile_groups:
+            self[key_name].update(self.profile[g], weight)
 
     def definecharset(self, char, character_set, base_key=None):
         base = self[base_key or self.base_key]
@@ -564,5 +594,5 @@ if __name__ == '__main__':
     import yaml
     prof = yaml.safe_load(open('data/new.yml'))
     key = TransKey(prof, 'base', 'consonants', 'vowels', 'other', 'clusters')
-    key.groups2key('base', 'infrequent', weight=15)
-    key.basekey2new('front', 'beginning')
+    key.extend('base', 'infrequent', weight=15)
+    key.base2new('front', 'beginning')
