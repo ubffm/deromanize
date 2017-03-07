@@ -239,26 +239,28 @@ class SuffixTree(Trie):
 class ReplacementTrie(Trie):
     template = 'ReplacementTrie(%r)'
 
-    def __init__(self, dictionary=None, parent=None):
-        super().__init__(dictionary)
-        self.parent = parent
-
     def __repr__(self):
         return self.template % self.simplify()
 
     def __setitem__(self, key, value, weight=None):
         super().__setitem__(key, self._ensurereplist(key, value, weight))
 
-    def copy(self):
-        new = super().copy()
-        new.parent = self.parent
-        return new
-
     def update(self, dictionary, weight=None):
         for k, v in dictionary.items():
             self.__setitem__(k, v, weight)
 
+    def soft_update(self, dictionary, weight=None):
+        """add items from dictionary are only if they do not already exist in
+        the current dictionary.
+        """
+        for k, v in dictionary.items():
+            if k not in self:
+                self.__setitem__(k, v, weight)
+
     def extend(self, dictionary, weight=None):
+        """For each item in in the input dictionary, the coresponding
+        replacement list in the trie is extended with the given replacemnts.
+        """
         for k, v in dictionary.items():
             self.setdefault(k, ReplacementList(k)).extend(v, weight)
 
@@ -438,7 +440,7 @@ class TransKey:
             if type(base) is type(key):
                 key = base.copy()
             else:
-                key.update(copy.deepcopy(self[base].dict()))
+                key.update(copy.deepcopy(base.dict()))
         for g in profile_groups:
             key.update(self.profile[g], weight)
         self[key_name] = key
@@ -455,53 +457,53 @@ class TransKey:
         for g in profile_groups:
             self[key_name].update(self.profile[g], weight)
 
-    def definecharset(self, char, character_set, base_key=None):
-        base = self[base_key or self.base_key]
+    def definecharset(self, char, character_set, base=None):
+        base = self.get_base(base)
         self.charactersets[char] = [base[c] for c in character_set]
 
-    def generatefuzzy(self, fuzzy_key, fuzzy_reps, base_key=None,
-                      weight=0, bad_digraphs=None):
+    def patterngen(self, key_pattern, rep_pattern, base=None,
+                   weight=0, bad_digraphs=None):
         """implement some kind of pattern matching for character classes that
         generates all possible matches ahead of time.
         """
-        base = self[base_key or self.base_key]
-        # parse fuzzy strings
-        fuzzy_key = [
+        base = self.get_base(base)
+        # parse pattern strings
+        key_pattern = [
             i for i in
-            re.split('(' + '|'.join(self.charactersets) + ')', fuzzy_key)
+            re.split('(' + '|'.join(self.charactersets) + ')', key_pattern)
             if i]
-        if isinstance(fuzzy_reps, str):
-            fuzzy_reps = [fuzzy_reps]
-        fuzzy_reps = [[i for i in re.split(r'(\d)', r) if i]
-                      for r in fuzzy_reps]
+        if isinstance(rep_pattern, str):
+            rep_pattern = [rep_pattern]
+        rep_pattern = [[i for i in re.split(r'(\d)', r) if i]
+                       for r in rep_pattern]
 
-        blocks, fuzzies = self._parse_key_blocks(fuzzy_key, base)
+        blocks, fuzzies = self._parse_key_blocks(key_pattern, base)
 
         # generate replacement lists (and keys) for each product
-        fuzzy_dict = {}
+        generated = {}
         for keyparts in itertools.product(*blocks):
             key = self._get_sane_key(base, keyparts, bad_digraphs)
-            for i, fuzzy_rep in enumerate(fuzzy_reps):
+            for i, rep_group in enumerate(rep_pattern):
                 reps = []
-                for block in fuzzy_rep:
+                for block in rep_group:
                     try:
                         reps.append(keyparts[fuzzies[int(block)]])
                     except ValueError:
                         reps.append(ReplacementList('', [(i, block)]))
                 replacement = add_reps(reps)
-                fuzzy_dict.setdefault(
+                generated.setdefault(
                     key, ReplacementList(key)).extend(replacement.data, weight)
 
-        return fuzzy_dict
+        return generated
 
-    def _parse_key_blocks(self, fuzzy_key, base):
-        """Turn fuzzy_key in to a list of iterables. make a dict that keeps
+    def _parse_key_blocks(self, key_pattern, base):
+        """Turn key_pattern in to a list of iterables. make a dict that keeps
         track of the indicies of fuzzy characters.
         """
         counter = 1
         fuzzies = {}
         blocks = []
-        for i, part in enumerate(fuzzy_key):
+        for i, part in enumerate(key_pattern):
             try:
                 blocks.append(self.charactersets[part])
                 fuzzies[counter] = i
@@ -511,7 +513,7 @@ class TransKey:
         return blocks, fuzzies
 
     def _get_sane_key(self, base, keyparts, bad_digraphs=None):
-        """Helper function for TransKey.generatefuzzy(), so the keys actually
+        """Helper function for TransKey.patterngen(), so the keys actually
         make sense (i.e. don't create any unintentional digraphs).
         """
         if not bad_digraphs:
@@ -540,16 +542,17 @@ class TransKey:
         newparts.append(oldparts[-1])
         return ''.join(newparts)
 
-    def fuzzies2key(self, target_key, fuzzy_dict, base_key=None,
-                    weight=None, bad_digraphs=None):
-        base_key = base_key or self.base_key
-        new_fuzzies = {}
-        for fuzzy_key, fuzzy_reps in fuzzy_dict.items():
-            new_fuzzies.update(self.generatefuzzy(
-                fuzzy_key, fuzzy_reps, base_key,
-                weight=weight, bad_digraphs=None))
-        new_fuzzies.update(self[target_key].dict())
-        self[target_key] = Trie(new_fuzzies)
+    def patterns2key(self, target, pattern_dict, base=None,
+                     weight=None, bad_digraphs=None, soft=False):
+        target = self.get_base(target)
+        base = base or target
+        for pattern_key, pattern_rep in pattern_dict.items():
+            generated = self.patterngen(pattern_key, pattern_rep, base,
+                                        weight=weight, bad_digraphs=None)
+            if soft:
+                target.soft_update(generated)
+            else:
+                target.update(generated)
 
     def processor(self, func):
         """decorator to define the process for decoding words. Basicaly just
@@ -576,6 +579,17 @@ class TransKey:
             value, remainder = self.get_stat_part(key, remainder)
             results.append(value)
         return results
+
+    def get_base(self, base=None):
+        if isinstance(base, str):
+            return self[base]
+        elif base is None:
+            return self[self.base_key]
+        elif isinstance(base, ReplacementTrie):
+            return base
+        else:
+            raise TypeError('%s is not supported as "base" argument" '
+                            % type(base))
 
 
 def get_empty_replist():

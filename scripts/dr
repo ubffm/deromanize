@@ -17,8 +17,8 @@ key.extend('base', 'infrequent', weight=15)
 endings = key.base2new('endings', 'final', suffix=True)
 beginning = key.base2new('beginning', 'beginning')
 key.definecharset('F', key.consonants, 'beginning')
-key.fuzzies2key('beginning', {'FiCC': ['123', '1י23']},
-                  bad_digraphs=PROFILE['bad_digraphs'])
+key.patterns2key(beginning, {'FiCC': ['123', '1י23']}, base,
+                 bad_digraphs=PROFILE['bad_digraphs'], soft=True)
 
 
 @key.processor

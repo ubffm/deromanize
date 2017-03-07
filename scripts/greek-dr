@@ -12,10 +12,7 @@ key.extend('base', 'infrequent', weight=3)
 key.base2new('ending', 'final', suffix=True)
 key.base2new('front')
 key.definecharset('D', PROFILE['diphthongs'])
-for k, v in PROFILE['front'].items():
-    fuzzies = key.generatefuzzy(k, v, 'base')
-    key['front'].update(fuzzies)
-
+key.patterns2key('front', PROFILE['front'], 'base')
 
 
 @key.processor
