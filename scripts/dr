@@ -10,21 +10,12 @@ CUTOFF = 5
 PROFILE = yaml.safe_load(open(CONFIG_FILE))
 
 # define the key
-key = deromanize.TransKey(PROFILE, 'base', 'consonants',
-                          'vowels', 'other', 'clusters')
-base = key['base']
-key.extend('base', 'infrequent', weight=15)
-endings = key.base2new('endings', 'final', suffix=True)
-beginning = key.base2new('beginning', 'beginning')
-key.definecharset('F', key.consonants, 'beginning')
-key.patterns2key(beginning, {'FiCC': ['123', '1י23']}, base,
-                 bad_digraphs=PROFILE['bad_digraphs'], soft=True)
-
+key = deromanize.TransKey(PROFILE, 'base')
 
 @key.processor
 def decode(key, word):
     # add aleph to words that begin with vowels.
-    if word[0] in key.vowels:
+    if word[0] in key.profile['vowels']:
         word = 'ʾ' + word
     # remove doubled letters
     newword = ''
@@ -33,9 +24,9 @@ def decode(key, word):
             newword += c
     # get ending clusters, then beginning clusters, then whatever's left in the
     # middle.
-    end, remaider = endings.getpart(newword)
-    front, remaider = beginning.getpart(remaider)
-    middle = deromanize.add_reps(base.getallparts(remaider))
+    end, remaider = key['end'].getpart(newword)
+    front, remaider = key['front'].getpart(remaider)
+    middle = deromanize.add_reps(key['base'].getallparts(remaider))
     hebword = front + middle + end
     hebword.sort()
     return hebword
@@ -44,8 +35,7 @@ def decode(key, word):
 def main():
     for word in sys.argv[1].lower().split():
         hebword = decode(word)
-        # print(word + ':  ', '\u200E, '.join(i.value for i in hebword[:CUTOFF]))
-        print(hebword)
+        print(word + ':  ', '\u200E, '.join(i.value for i in hebword[:CUTOFF]))
 
 if __name__ == '__main__':
     main()

@@ -28,15 +28,15 @@ import re
 import unicodedata
 
 
-class _Empty:
+class Empty:
     def __repr__(self):
         return "empty"
 
     def __eq__(self, other):
-        return isinstance(other, _Empty)
+        return isinstance(other, Empty)
 
 
-empty = _Empty()
+empty = Empty()
 
 
 class Trie:
@@ -90,8 +90,7 @@ class Trie:
 
     def __getitem__(self, key):
         node = self._getnode(key)
-
-        if node[0] is empty:
+        if node[0] == empty:
             raise KeyError(key)
         return node[0]
 
@@ -145,7 +144,7 @@ class Trie:
     def _itemize(self, topnode, keypart=''):
         for key, node in topnode[1].items():
             newkeypart = keypart + key
-            if node[0] is not empty:
+            if node[0] != empty:
                 yield (newkeypart, node[0])
             yield from self._itemize(node, newkeypart)
 
@@ -161,7 +160,7 @@ class Trie:
 
     def _values(self, topnode):
         for key, node in topnode[1].items():
-            if node[0] is not empty:
+            if node[0] != empty:
                 yield node[0]
             yield from self._values(node)
 
@@ -188,15 +187,15 @@ class Trie:
             try:
                 node = node[1][char]
             except KeyError:
-                if value is empty:
+                if value == empty:
                     raise
                 else:
                     return value, remainder
 
-            if node[0] is not empty:
+            if node[0] != empty:
                 value, remainder = node[0], key[i+1:]
 
-        if value is empty:
+        if value == empty:
             raise KeyError(key)
         else:
             return value, remainder
@@ -245,29 +244,67 @@ class ReplacementTrie(Trie):
     def __setitem__(self, key, value, weight=None):
         super().__setitem__(key, self._ensurereplist(key, value, weight))
 
-    def update(self, dictionary, weight=None):
-        for k, v in dictionary.items():
-            self.__setitem__(k, v, weight)
+    def update(self, dictionary, weight=None, parent=None):
+        if parent:
+            for k, v in dictionary.items():
+                if any(i in k for i in parent.char_sets):
+                    generated = parent.patterngen(
+                        k, v, broken_clusters=parent.broken_clusters)
+                    self.update(generated, weight)
+                else:
+                    self.__setitem__(k, v, weight)
+        else:
+            for k, v in dictionary.items():
+                self.__setitem__(k, v, weight)
 
-    def soft_update(self, dictionary, weight=None):
+    def soft_update(self, dictionary, weight=None, parent=None):
         """add items from dictionary are only if they do not already exist in
         the current dictionary.
         """
-        for k, v in dictionary.items():
-            if k not in self:
-                self.__setitem__(k, v, weight)
+        if parent:
+            for k, v in dictionary.items():
+                if k not in self:
+                    if any(i in k for i in parent.char_sets):
+                        generated = parent.patterngen(
+                            k, v, broken_clusters=parent.broken_clusters)
+                        self.soft_update(generated, weight)
+                    else:
+                        self.__setitem__(k, v, weight)
+        else:
+            for k, v in dictionary.items():
+                if k not in self:
+                    self.__setitem__(k, v, weight)
 
-    def extend(self, dictionary, weight=None):
+    def extend(self, dictionary, weight=None, parent=None):
         """For each item in in the input dictionary, the coresponding
         replacement list in the trie is extended with the given replacemnts.
         """
-        for k, v in dictionary.items():
-            self.setdefault(k, ReplacementList(k)).extend(v, weight)
+        if parent:
+            for k, v in dictionary.items():
+                if any(i in k for i in parent.char_sets):
+                    generated = parent.patterngen(
+                        k, v, broken_clusters=parent.broken_clusters)
+                    self.extend(generated, weight)
+                else:
+                    self.setdefault(k, ReplacementList(k)).extend(v, weight)
+        else:
+            for k, v in dictionary.items():
+                self.setdefault(k, ReplacementList(k)).extend(v, weight)
 
     def simplify(self):
         return {k: [((i.weight, i.value) if i.weight else i.value)
                     for i in v.data]
                 for k, v in self.items()}
+
+    def child(self, *dicts, weight=None, suffix=False):
+        child = ReplacementSuffixTree() if suffix else ReplacementTrie()
+        if type(self) is type(child):
+            child = self.copy()
+        else:
+            child.update(copy.deepcopy(self.dict()))
+        for d in dicts:
+            child.update(d, weight)
+        return child
 
     @staticmethod
     def _ensurereplist(key, value, weight=None):
@@ -317,7 +354,6 @@ class ReplacementList(abc.MutableSequence):
     they belong
     """
     reptype = Replacement
-
     def __init__(self, key, values: list=None, weight=None):
         self.key = key
         self.data = []
@@ -328,7 +364,7 @@ class ReplacementList(abc.MutableSequence):
     def _prep_value(i, value):
         if isinstance(value, Replacement):
             return value
-        elif isinstance(value, tuple) and len(value) == 2:
+        elif isinstance(value, (tuple, list)) and len(value) == 2:
             return Replacement(*value)
         elif isinstance(value, str):
             return Replacement(i, value)
@@ -404,26 +440,68 @@ class ReplacementList(abc.MutableSequence):
             self.data.remove(i)
 
 
+class CharSets:
+    def __init__(self, char_sets, key):
+        self.unparsed = Trie(char_sets)
+        self.parsed = Trie()
+        self.key = key
+
+    def __getitem__(self, key):
+        try:
+            return self.parsed[key]
+        except KeyError:
+            self.parse(key)
+        return self.parsed[key]
+
+    def __setitem__(self, key, value):
+        self.parsed[key] = value
+
+    def __contains__(self, key):
+        return key in self.unparsed
+
+    def __iter__(self):
+        return iter(self.unparsed)
+
+    def getpart(self, key):
+        try:
+            return self.parsed.getpart(key)
+        except KeyError:
+            _, remainder = self.unparsed.getpart(key)
+            matched = key[:len(key)-len(remainder)]
+            self.parse(matched)
+        return self.parsed.getpart(key)
+
+    def parse(self, key):
+        def_ = self.unparsed[key]
+        try:
+            chars = self.key.profile[def_]
+            base = self.key[self.key.base_key]
+        except (TypeError, KeyError):
+            chars = self.key.profile[def_['chars']]
+            base = self.key.get_base(def_['base'])
+        self.parsed[key] = [base[c] for c in chars]
+
+
 class TransKey:
     """an object to build up a transliteration key from a config file. (or
     rather, a python dictionary unmarshalled from a config file.)
     """
-    def __init__(self, profile, base_key=None, *args, **kwargs):
+    def __init__(self, profile, base_key):
         self.profile = profile
-        self.consonants = set(profile['consonants'])
-        self.vowels = set(profile['vowels'])
-        self.allchars = (
-            self.consonants | self.vowels | set(profile.get('other', set())))
-        self.charactersets = {}
+        try:
+            self.char_sets = CharSets(profile['char_sets'], self)
+        except KeyError:
+            self.char_sets = {}
         self.keys = {}
         self.base_key = base_key
-        if args or kwargs:
-            self.new(base_key, *args, **kwargs)
-        self.definecharset('C', self.consonants)
-        self.definecharset('V', self.vowels)
-        for v in self.vowels:
-            basev = unicodedata.normalize('NFD', v)[0].upper()
-            self.charactersets.setdefault(basev, set()).add(v)
+        self.broken_clusters = profile.get('broken_clusters')
+        if 'keys' in profile:
+            self.keygen(base_key)
+
+            for k in profile['keys']:
+                if k == base_key:
+                    continue
+                self.keygen(k)
 
     def __setitem__(self, key, value):
         self.keys[key] = value
@@ -431,20 +509,30 @@ class TransKey:
     def __getitem__(self, key):
         return self.keys[key]
 
+    def keygen(self, keyname):
+        info = self.profile['keys'][keyname]
+        if isinstance(info, list):
+            info = {'groups': info}
+        suffix = info.get('suffix')
+        base = info.get('base')
+        groups = info.get('groups', [])
+        if isinstance(groups, str):
+            groups = [groups]
+        key = self.new(keyname, base=base, suffix=suffix)
+        for g in groups:
+            if isinstance(g, str):
+                key.update(self.profile[g], parent=self)
+            elif isinstance(g, dict):
+                for k, v in g.items():
+                    key.extend(self.profile[k], weight=v, parent=self)
+        self[keyname] = key
+
     def new(self, key_name, *profile_groups,
             base=None, weight=None, suffix=False):
-        key = ReplacementSuffixTree() if suffix else ReplacementTrie()
-        if base is not None:
-            if isinstance(base, str):
-                base = self[base]
-            if type(base) is type(key):
-                key = base.copy()
-            else:
-                key.update(copy.deepcopy(base.dict()))
-        for g in profile_groups:
-            key.update(self.profile[g], weight)
-        self[key_name] = key
-        return key
+        base = self.get_base(base)
+        dicts = (self.profile[g] for g in profile_groups)
+        self[key_name] = base.child(*dicts, weight=weight, suffix=suffix)
+        return self[key_name]
 
     def base2new(self, *args, **kwargs):
         return self.new(*args, base=self.base_key, **kwargs)
@@ -459,10 +547,10 @@ class TransKey:
 
     def definecharset(self, char, character_set, base=None):
         base = self.get_base(base)
-        self.charactersets[char] = [base[c] for c in character_set]
+        self.char_sets[char] = [base[c] for c in character_set]
 
     def patterngen(self, key_pattern, rep_pattern, base=None,
-                   weight=0, bad_digraphs=None):
+                   weight=0, broken_clusters=None):
         """implement some kind of pattern matching for character classes that
         generates all possible matches ahead of time.
         """
@@ -470,24 +558,24 @@ class TransKey:
         # parse pattern strings
         key_pattern = [
             i for i in
-            re.split('(' + '|'.join(self.charactersets) + ')', key_pattern)
+            re.split('(' + '|'.join(self.char_sets) + ')', key_pattern)
             if i]
         if isinstance(rep_pattern, str):
             rep_pattern = [rep_pattern]
-        rep_pattern = [[i for i in re.split(r'(\d)', r) if i]
+        rep_pattern = [[i for i in re.split(r'(\d)', str(r)) if i]
                        for r in rep_pattern]
 
-        blocks, fuzzies = self._parse_key_blocks(key_pattern, base)
+        blocks, pattern_idx = self._parse_key_blocks(key_pattern, base)
 
         # generate replacement lists (and keys) for each product
         generated = {}
         for keyparts in itertools.product(*blocks):
-            key = self._get_sane_key(base, keyparts, bad_digraphs)
+            key = self._get_sane_key(base, keyparts, broken_clusters)
             for i, rep_group in enumerate(rep_pattern):
                 reps = []
                 for block in rep_group:
                     try:
-                        reps.append(keyparts[fuzzies[int(block)]])
+                        reps.append(keyparts[pattern_idx[int(block)]])
                     except ValueError:
                         reps.append(ReplacementList('', [(i, block)]))
                 replacement = add_reps(reps)
@@ -501,22 +589,22 @@ class TransKey:
         track of the indicies of fuzzy characters.
         """
         counter = 1
-        fuzzies = {}
+        pattern_idx = {}
         blocks = []
         for i, part in enumerate(key_pattern):
             try:
-                blocks.append(self.charactersets[part])
-                fuzzies[counter] = i
+                blocks.append(self.char_sets[part])
+                pattern_idx[counter] = i
                 counter += 1
             except KeyError:
                 blocks.extend([p.key] for p in base.getallparts(part))
-        return blocks, fuzzies
+        return blocks, pattern_idx
 
-    def _get_sane_key(self, base, keyparts, bad_digraphs=None):
+    def _get_sane_key(self, base, keyparts, broken_clusters=None):
         """Helper function for TransKey.patterngen(), so the keys actually
         make sense (i.e. don't create any unintentional digraphs).
         """
-        if not bad_digraphs:
+        if not broken_clusters:
             letters = []
             for p in keyparts:
                 try:
@@ -535,7 +623,7 @@ class TransKey:
         for i, part in enumerate(oldparts[:-1]):
             nextpart = oldparts[i+1]
             try:
-                newparts.append(bad_digraphs[part + nextpart])
+                newparts.append(broken_clusters[part + nextpart])
                 oldparts[i+1] = ''
             except KeyError:
                 newparts.append(part)
@@ -543,12 +631,12 @@ class TransKey:
         return ''.join(newparts)
 
     def patterns2key(self, target, pattern_dict, base=None,
-                     weight=None, bad_digraphs=None, soft=False):
+                     weight=None, broken_clusters=None, soft=False):
         target = self.get_base(target)
         base = base or target
         for pattern_key, pattern_rep in pattern_dict.items():
             generated = self.patterngen(pattern_key, pattern_rep, base,
-                                        weight=weight, bad_digraphs=None)
+                                        weight=weight, broken_clusters=None)
             if soft:
                 target.soft_update(generated)
             else:
@@ -584,7 +672,10 @@ class TransKey:
         if isinstance(base, str):
             return self[base]
         elif base is None:
-            return self[self.base_key]
+            try:
+                return self[self.base_key]
+            except KeyError:
+                return ReplacementTrie()
         elif isinstance(base, ReplacementTrie):
             return base
         else:
@@ -607,6 +698,4 @@ def add_reps(reps):
 if __name__ == '__main__':
     import yaml
     prof = yaml.safe_load(open('data/new.yml'))
-    key = TransKey(prof, 'base', 'consonants', 'vowels', 'other', 'clusters')
-    key.extend('base', 'infrequent', weight=15)
-    key.base2new('front', 'beginning')
+    key = TransKey(prof, 'base')

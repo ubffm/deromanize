@@ -1,3 +1,26 @@
+keys:
+  base:
+    - consonants
+    - vowels
+    - other
+    - clusters
+    - infrequent: 15
+
+  front:
+    base: base
+    groups: beginning
+
+  end:
+    base: base
+    groups: final
+    suffix: true
+
+char_sets:
+  C: consonants
+  F:
+    base: front
+    chars: consonants
+
 consonants:
   ʾ: א
   b: ב
@@ -27,7 +50,6 @@ consonants:
   t: ת
 
 vowels:
-  #i: [י, '']
   i: י
   e: ['', י]
   a: ''
@@ -83,13 +105,14 @@ final:
 beginning:
   y: י
   ṿ: ו
+  FiCC: ["123", 1י23]
 
 flattened:
   v: b
   ḵ: k
   f: p
 
-bad_digraphs:
+broken_clusters:
   kh: "k'h"
   sh: "s'h"
   ts: "t's"
