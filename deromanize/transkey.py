@@ -292,8 +292,7 @@ class ReplacementTrie(Trie):
                 self.setdefault(k, ReplacementList(k)).extend(v, weight)
 
     def simplify(self):
-        return {k: [((i.weight, i.value) if i.weight else i.value)
-                    for i in v.data]
+        return {k: [(i.weight, i.value) for i in v.data]
                 for k, v in self.items()}
 
     def child(self, *dicts, weight=None, suffix=False):
@@ -487,7 +486,7 @@ class TransKey:
     """an object to build up a transliteration key from a config file. (or
     rather, a python dictionary unmarshalled from a config file.)
     """
-    def __init__(self, profile, base_key):
+    def __init__(self, profile, base_key='base'):
         self.profile = profile
         try:
             self.char_sets = CharSets(profile['char_sets'], self)
@@ -512,10 +511,11 @@ class TransKey:
 
     def keygen(self, keyname):
         info = self.profile['keys'][keyname]
-        if isinstance(info, list):
+        if isinstance(info, (list, str)):
             info = {'groups': info}
         suffix = info.get('suffix')
-        base = info.get('base')
+        base = info.get('base',
+                        None if keyname == self.base_key else self.base_key)
         groups = info.get('groups', [])
         if isinstance(groups, str):
             groups = [groups]
@@ -550,12 +550,11 @@ class TransKey:
         base = self.get_base(base)
         self.char_sets[char] = [base[c] for c in character_set]
 
-    def patterngen(self, key_pattern, rep_pattern, base=None,
+    def patterngen(self, key_pattern, rep_pattern,
                    weight=0, broken_clusters=None):
         """implement some kind of pattern matching for character classes that
         generates all possible matches ahead of time.
         """
-        base = self.get_base(base)
         # parse pattern strings
         key_pattern = [
             i for i in
@@ -566,12 +565,12 @@ class TransKey:
         rep_pattern = [[i for i in re.split(r'(\d)', str(r)) if i]
                        for r in rep_pattern]
 
-        blocks, pattern_idx = self._parse_key_blocks(key_pattern, base)
+        blocks, pattern_idx = self._parse_key_blocks(key_pattern)
 
         # generate replacement lists (and keys) for each product
         generated = {}
         for keyparts in itertools.product(*blocks):
-            key = self._get_sane_key(base, keyparts, broken_clusters)
+            key = self._get_sane_key(keyparts, broken_clusters)
             for i, rep_group in enumerate(rep_pattern):
                 reps = []
                 for block in rep_group:
@@ -585,7 +584,7 @@ class TransKey:
 
         return generated
 
-    def _parse_key_blocks(self, key_pattern, base):
+    def _parse_key_blocks(self, key_pattern):
         """Turn key_pattern in to a list of iterables. make a dict that keeps
         track of the indicies of fuzzy characters.
         """
@@ -598,10 +597,11 @@ class TransKey:
                 pattern_idx[counter] = i
                 counter += 1
             except KeyError:
-                blocks.extend([p.key] for p in base.getallparts(part))
+                blocks.extend(part)
         return blocks, pattern_idx
 
-    def _get_sane_key(self, base, keyparts, broken_clusters=None):
+    @staticmethod
+    def _get_sane_key(keyparts, broken_clusters=None):
         """Helper function for TransKey.patterngen(), so the keys actually
         make sense (i.e. don't create any unintentional digraphs).
         """
@@ -631,12 +631,11 @@ class TransKey:
         newparts.append(oldparts[-1])
         return ''.join(newparts)
 
-    def patterns2key(self, target, pattern_dict, base=None,
-                     weight=None, broken_clusters=None, soft=False):
+    def patterns2key(self, target, pattern_dict, weight=None,
+                     broken_clusters=None, soft=False):
         target = self.get_base(target)
-        base = base or target
         for pattern_key, pattern_rep in pattern_dict.items():
-            generated = self.patterngen(pattern_key, pattern_rep, base,
+            generated = self.patterngen(pattern_key, pattern_rep,
                                         weight=weight, broken_clusters=None)
             if soft:
                 target.soft_update(generated)

@@ -7,12 +7,10 @@ keys:
     - infrequent: 3
 
   end:
-    base: base
     groups: final
+    suffix: true
 
-  front:
-    base: base
-    groups: front
+  front: front
 
 char_sets:
   V: vowels

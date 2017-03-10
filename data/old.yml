@@ -7,14 +7,12 @@ keys:
     - vowel errors: 10
 
   end:
-    base: base
     groups:
       - final
       - final errors: 10
+    suffix: true
 
-  front:
-    base: base
-    groups: beginning
+  front: beginning
 
 consonants:
   ʾ: א

@@ -10,7 +10,7 @@ CUTOFF = 5
 PROFILE = yaml.safe_load(open(CONFIG_FILE))
 
 # define the key
-key = deromanize.TransKey(PROFILE, 'base')
+key = deromanize.TransKey(PROFILE)
 
 @key.processor
 def decode(key, word):

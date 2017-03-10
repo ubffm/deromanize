@@ -15,16 +15,21 @@ mechanism for simplifying this process.
 Creating a Profile
 ~~~~~~~~~~~~~~~~~~
 A profile has fairly simple format. It is a dictionary which contains
-dictionaries with strings or lists of strings. It can easily be stored
-as JSON, or a .ini file could be used with little post processing. I
-like to use YAML because it's easy to write (though I do not mean to
-endorse the abomination that is the YAML standard in so doing; Perhaps
-hjson would be a saner choice).
+dictionaries that have all the information needed to build up
+transliteration rules. It can easily be stored as JSON or any format
+can represent the same data structures as JSON. I like to use YAML
+because it's easy to write (though I do not mean to endorse the
+abomination that is the YAML standard in so doing; Perhaps hjson would
+be a saner choice).
 
-The profile, at the very least, must define all consonants and vowels
-used in the Romanization standard (including digraphs).
+The profile.
 
 .. code:: yaml
+
+ keys:
+   base:
+     - consonants
+     - vowels
 
  consonants:
   ʾ: א
@@ -62,12 +67,13 @@ used in the Romanization standard (including digraphs).
   u: ו
 
 Note:
-  Some letter pairs are reversed on this webpage because of automatic
-  bidi resolution. Most editors also pull these shenanigans, which is
-  great for text, but not great for code. Emacs has options for this,
-  and Vim doesn't even try to fix bidi (though your terminal might). I
-  don't know what kind of options your favorite editor has for falling
-  back to "stupid" LTR text flow when it screws up code readability.
+  The letters in the lists are reversed on this webpage because of
+  automatic bidi resolution. Most editors also pull these shenanigans,
+  which is great for text, but not great for code. Emacs has options for
+  this, and Vim doesn't even try to fix bidi (though your terminal
+  might). I don't know what kind of options your favorite editor has for
+  falling back to "stupid" LTR text flow when it screws up code
+  readability.
 
 These character classes are hooked into different places to enable some
 fuzzy cluster generation (more on that later), and they can also be used
