@@ -1,3 +1,23 @@
+keys:
+  base:
+    - consonants
+    - vowels
+    - clusters
+    - diphthongs
+    - infrequent: 3
+
+  end:
+    base: base
+    groups: final
+
+  front:
+    base: base
+    groups: front
+
+char_sets:
+  V: vowels
+  D: diphthongs
+
 consonants:
   b: β
   g: γ

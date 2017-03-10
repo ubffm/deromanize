@@ -6,18 +6,11 @@ PROJECT_DIR = os.path.dirname(os.path.dirname(deromanize.__file__))
 CONFIG_FILE = os.path.join(PROJECT_DIR, 'data', 'gk.yml')
 CUTOFF = 5
 PROFILE = yaml.safe_load(open(CONFIG_FILE))
-key = deromanize.TransKey(PROFILE, 'base', 'consonants', 'vowels', 'clusters',
-        'diphthongs')
-key.extend('base', 'infrequent', weight=3)
-key.base2new('ending', 'final', suffix=True)
-key.base2new('front')
-key.definecharset('D', PROFILE['diphthongs'])
-key.patterns2key('front', PROFILE['front'], 'base')
-
+key = deromanize.TransKey(PROFILE, 'base')
 
 @key.processor
 def decode(key, word):
-    end, remainder = key['ending'].getpart(word)
+    end, remainder = key['end'].getpart(word)
     try:
         front, remainder = key['front'].getpart(remainder)
     except KeyError:

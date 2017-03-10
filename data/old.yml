@@ -1,3 +1,21 @@
+keys:
+  base:
+    - consonants
+    - vowels
+    - clusters
+    - infrequent: 15
+    - vowel errors: 10
+
+  end:
+    base: base
+    groups:
+      - final
+      - final errors: 10
+
+  front:
+    base: base
+    groups: beginning
+
 consonants:
   ʾ: א
   b: ב
@@ -54,7 +72,6 @@ infrequent:
   î: א
   ê: א
   ô: א
-
 
 beginning:
   y: י

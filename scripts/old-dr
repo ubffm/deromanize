@@ -10,17 +10,12 @@ CUTOFF = 5
 PROFILE = yaml.safe_load(open(CONFIG_FILE))
 
 # define the key
-key = deromanize.TransKey(PROFILE, 'base', 'consonants', 'vowels', 'clusters')
-key.extend('base', 'vowel errors', weight=10)
-key.extend('base', 'infrequent', weight=15)
-endings = key.new('endings', 'final', base='base', suffix=True)
-key.extend('endings', 'final errors', weight=10)
-beginning = key.base2new('beginning', 'beginning')
+key = deromanize.TransKey(PROFILE, 'base')
 
 @key.processor
 def decode(key, word):
     # add aleph to words that begin with vowels.
-    if word[0] in key.vowels:
+    if word[0] in PROFILE['vowels']:
         word = 'ʾ' + word
     # remove doubled letters
     newword = ''
@@ -29,8 +24,8 @@ def decode(key, word):
             newword += c
     # get ending clusters, then beginning clusters, then whatever's left in the
     # middle.
-    end, remaider = key['endings'].getpart(newword)
-    front, remaider = key['beginning'].getpart(remaider)
+    end, remaider = key['end'].getpart(newword)
+    front, remaider = key['front'].getpart(remaider)
     middle = deromanize.add_reps(key['base'].getallparts(remaider))
     hebword = front + middle + end
     hebword.sort()

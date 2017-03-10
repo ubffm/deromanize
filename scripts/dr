@@ -15,7 +15,7 @@ key = deromanize.TransKey(PROFILE, 'base')
 @key.processor
 def decode(key, word):
     # add aleph to words that begin with vowels.
-    if word[0] in key.profile['vowels']:
+    if word[0] in PROFILE['vowels']:
         word = 'ʾ' + word
     # remove doubled letters
     newword = ''

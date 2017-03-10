@@ -354,6 +354,7 @@ class ReplacementList(abc.MutableSequence):
     they belong
     """
     reptype = Replacement
+
     def __init__(self, key, values: list=None, weight=None):
         self.key = key
         self.data = []
