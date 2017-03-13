@@ -227,6 +227,7 @@ get out of it at some point, you can set it to ``None`` (which happens
 to be spelled ``null`` in JSON and YAML).
 
 .. code:: yaml
+
   front:
     base: null
     groups: some groups here...
