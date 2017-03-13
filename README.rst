@@ -187,15 +187,15 @@ Defining Keys
 
 is the same as...
 	
- .. code:: yaml
+.. code:: yaml
 
-  base:
-    groups:
-      - consonants
-      - vowels
-      - other
-      - clusters
-      - infrequent: 15
+ base:
+   groups:
+     - consonants
+     - vowels
+     - other
+     - clusters
+     - infrequent: 15
 
 The other shortcut is that ``base`` is actually a special character
 group. If it is defined, all other character groups will inherit default
@@ -230,14 +230,13 @@ to be spelled ``null`` in JSON and YAML).
 
   front:
     base: null
-    groups: some groups here...
+    groups: some groups here
 
- You can, of course, use any other key as your base and get into some
- rather sophisticated composition if you wish.
+You can, of course, use any other key as your base and get into some
+rather sophisticated composition if you wish.
 
 Creating a TransKey Instance
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Given this profile_, let's start building our TransKey instance.
 
 
 .. code:: python
