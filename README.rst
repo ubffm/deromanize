@@ -229,7 +229,7 @@ to be spelled ``null`` in JSON and YAML).
 .. code:: yaml
   front:
     base: null
-    groups: ...
+    groups: some groups here...
 
  You can, of course, use any other key as your base and get into some
  rather sophisticated composition if you wish.
