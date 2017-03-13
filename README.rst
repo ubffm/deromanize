@@ -12,8 +12,11 @@ Romanization standard. The programmer still must define how the contents
 of the profile data will be used, but the TransKey is a helpful
 mechanism for simplifying this process.
 
-Creating a Profile
-~~~~~~~~~~~~~~~~~~
+Basic usage
+-----------
+The first step working with ``deromanize`` is defining your decoding
+keys in data through a profile.
+
 A profile has fairly simple format. It is a dictionary which contains
 dictionaries that have all the information needed to build up
 transliteration rules. It can easily be stored as JSON or any format
@@ -65,7 +68,7 @@ below has two) and a ``keys`` section.
   o: [ו, '']
   u: ו
 
-Note::
+Note:
   The letters in the arrays are reversed on this web page when viewed in
   most modern web browsers because of automatic bidi resolution. Most
   editors also pull these shenanigans, which is great for text, but not
@@ -73,7 +76,7 @@ Note::
   to fix bidi (though your terminal might). I don't know what kind of
   options your favorite editor has for falling back to "stupid" LTR text
   flow when it screws up code readability.
-
+  
 Character groups:
   
 Each character group is a dictionary containing the Romanized form
@@ -88,44 +91,163 @@ Romanized forms can contain an arbitrary number of characters, so
 digraphs will be fine. You may even wish to define longer clusters to,
 for example, provide uniform handling of common morphological
 affixes. ``deromanize`` uses greedy matching, so the longest possible
-cluster will always be matched.
+cluster will always be matched. There are also other uses for character
+groups involving pattern matching which will be covered later. (You can
+really stick any arbitrary data in this file that you think might be
+helpful later; aside from two keys, ``keys`` and ``char_sets``, nothing
+will be processed automatically)
 
-These character classes are hooked into different places to enable some
-fuzzy cluster generation (more on that later), and they can also be used
-to interface with filter generation in the ``filtermaker`` module. If
-you define a group called ``other``, any characters defined here will be
-considered part of the base character set; for example, if there is any
-punctuation that needs to be converted or something.
+Keys:
 
-You can see each group is a dictionary where the Romanized form of the
-character is the key, and the value is what it should convert to in the
-original script, if it's a list, it should be because there is ambiguity
-in the Romanization, and the Romanized character has multiple possible
-realizations in the original script. The possibilities should be given
-in order of likelihood of their appearance. Multiple results will be
-sorted according to this order.
+``keys`` is a dictionary of objects that allow you to compose the
+different character groups in different ways. For one-to-one
+transliteration standards, you'd theoretically only need one key (and
+probably not need to mess around with this framework, though it would
+get the job done just fine).
 
-You can define as many other groups as you want, which can be used in
-various ways, as we'll see. There's no harm in putting additional kinds
-of data in the same profile data structure for your own use. Aside from
-``consonants``, ``vowels`` and ``others``, nothing will be automatically
-parsed.
+In this case, we create one key called ``base`` and a list of the groups
+it will contain, ``consonants`` and ``vowels``.
+
+Given the above configuration, we can do something like this:
+
+.. code:: python
+
+   >>> # TransKeys only deal with python objects, so we have to
+   >>> # deserialize it from our chosen format.
+   >>> import deromanize
+   >>> import yaml
+   >>> PROFILE = yaml.safe_load(open('above_profile.yml'))
+   >>> key = deromanize.TransKey(PROFILE)
+
+From here, we can start sending words to the ``base`` key and see what
+comes out.
+
+.. code:: python
+  
+  >>> key['base'].getallparts('shalom')
+  [ReplacementList('sh', [Replacement(0, 'ש')]), ReplacementList('a',
+  [Replacement(0, '')]), ReplacementList('l', [Replacement(0, 'ל')]),
+  ReplacementList('o', [Replacement(0, 'ו'), Replacement(1, '')]),
+  ReplacementList('m', [Replacement(0, 'מ')])]
+  >>> # looks a little silly.
+  >>> print(add_reps( key['base'].getallparts('shalom')))
+  shalom:
+  0 שלומ
+  1 שלמ
+
+So, basically, the ``.getallparts()`` method takes a string as input and
+decodes it bit by bit, grabbing all possible original versions. You can
+get all the possible version of the word together. Ignore the numbers
+for now. They have to deal with sorting. This is just to demonstrate
+the most basic use-case. The Hebrew-speakers may observe that neither of
+these options is correct (because it doesn't account for final letters),
+so we'll dive a bit deeper into the system to see how more complex
+situations can be dealt with.
+
+Building Complex Profiles
+-------------------------
+Let's take a look at a more complex profile, bit by bit. (See the
+profile in its entirety here_.)
+
+.. _here: data/new.yml
+
+Defining Keys
+~~~~~~~~~~~~~
+
+.. code:: yaml
+  
+  keys:
+    base:
+      - consonants
+      - vowels
+      - other
+      - clusters
+      - infrequent: 15
+
+    front:
+      - beginning
+      - beginning patterns
+
+    end:
+      groups: final
+      suffix: true
+
+ The first thing to know is that there are a few configuration shortcuts
+ if a key only contains a list, that list is automatically assigned to
+ ``groups``. Therefore:
+
+ .. code:: yaml
+
+    base:
+      - consonants
+      - vowels
+      - other
+      - clusters
+      - infrequent: 15
+
+is the same as...
+	
+ .. code:: yaml
+
+    base:
+      groups:
+	- consonants
+	- vowels
+	- other
+	- clusters
+	- infrequent: 15
+
+The other shortcut is that ``base`` is actually a special character
+group. If it is defined, all other character groups will inherit default
+from it as a prototype character group which you can selectively
+override and extend with other character groups to build all the groups
+you need.
+
+Therefore:
+
+.. code:: yaml
+  
+    front:
+      - beginning
+      - beginning patterns
+
+\... is the same as...
+
+.. code:: yaml
+  
+    front:
+      base: base
+      groups:
+        - beginning
+        - beginning patterns
+
+If you don't want this behavior for any of your keys, you can simply
+choose not to define ``base``. If you find it useful, but you want to
+get out of it at some point, you can set it to ``None`` (which happens
+to be spelled ``null`` in JSON and YAML).
+
+.. code:: yaml
+  front:
+    base: null
+    groups: ...
+
+ You can, of course, use any other key as your base and get into some
+ rather sophisticated composition if you wish.
 
 Creating a TransKey Instance
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Given this profile_, let's start building our TransKey instance.
 
-.. _profile: data/new.yml
 
 .. code:: python
 
-    # TransKeys only deal with python objects, so we have to unmarshall
-    # from our serialization format of choice. I chose YAML, due to
-    # brain damage.
-    >>> import deromanize
-    >>> import yaml
-    >>> PROFILE = yaml.safe_load(open('./data/new.yml'))
-    >>> key = deromanize.TransKey(PROFILE, 'base', 'consonants', 'vowels')
+   # TransKeys only deal with python objects, so we have to unmarshal
+   # from our serialization format of choice. I chose YAML, due to
+   # brain damage.
+   >>> import deromanize
+   >>> import yaml
+   >>> PROFILE = yaml.safe_load(open('./data/new.yml'))
+   >>> key = deromanize.TransKey(PROFILE, 'base', 'consonants', 'vowels')
 
 So what just happened there?
 
