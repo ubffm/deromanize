@@ -501,7 +501,7 @@ class TransKey:
                 self[base_key] = ReplacementTrie()
 
             for k in profile['keys']:
-                if k == base_key:
+                if k == base_key or k in self.keys:
                     continue
                 self.keygen(k)
 
@@ -521,12 +521,18 @@ class TransKey:
         groups = info.get('groups', [])
         if isinstance(groups, str):
             groups = [groups]
+        if base not in self.keys and base is not None:
+            self.keygen(base)
         key = self.new(keyname, base=base, suffix=suffix)
         for g in groups:
             if isinstance(g, str):
                 key.update(self.profile[g], parent=self)
-            elif isinstance(g, dict):
-                for k, v in g.items():
+            else:
+                if isinstance(g, dict):
+                    g = g.items()
+                else:
+                    g = g[::-1]
+                for k, v in g:
                     key.extend(self.profile[k], weight=v, parent=self)
         self[keyname] = key
 

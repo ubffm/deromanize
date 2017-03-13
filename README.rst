@@ -130,19 +130,20 @@ comes out.
   ReplacementList('o', [Replacement(0, 'ו'), Replacement(1, '')]),
   ReplacementList('m', [Replacement(0, 'מ')])]
   >>> # looks a little silly.
-  >>> print(add_reps( key['base'].getallparts('shalom')))
+  >>> print(deromanize.add_reps(key['base'].getallparts('shalom')))
   shalom:
   0 שלומ
   1 שלמ
 
 So, basically, the ``.getallparts()`` method takes a string as input and
-decodes it bit by bit, grabbing all possible original versions. You can
-get all the possible version of the word together. Ignore the numbers
-for now. They have to deal with sorting. This is just to demonstrate
-the most basic use-case. The Hebrew-speakers may observe that neither of
-these options is correct (because it doesn't account for final letters),
-so we'll dive a bit deeper into the system to see how more complex
-situations can be dealt with.
+decodes it bit by bit, grabbing all possible original versions for each
+Romanization symbol. You can get all the possible version of the word
+together. Ignore the numbers for now. They have to deal with
+sorting. This is just to demonstrate the most basic use-case. The
+Hebrew-speakers may observe that neither of these options is correct
+(because it doesn't account for final letters), so we'll dive a bit
+deeper into the system to see how more complex situations can be dealt
+with.
 
 Building Complex Profiles
 -------------------------
@@ -158,23 +159,27 @@ Defining Keys
   
   keys:
     base:
-      - consonants
-      - vowels
-      - other
-      - clusters
-      - infrequent: 15
+      groups:
+        - consonants
+        - vowels
+        - other
+        - clusters
+        - infrequent: 10
 
     front:
-      - beginning
-      - beginning patterns
+      base: base
+      groups:
+        - beginning
+        - beginning patterns
 
     end:
+      base: base
       groups: final
       suffix: true
 
- The first thing to know is that there are a few configuration shortcuts
- if a key only contains a list, that list is automatically assigned to
- ``groups``. Therefore:
+The first thing to know is that there are a few configuration shortcuts
+if a key only contains a list, that list is automatically assigned to
+``groups``. Therefore:
 
  .. code:: yaml
 
@@ -183,7 +188,7 @@ Defining Keys
       - vowels
       - other
       - clusters
-      - infrequent: 15
+      - infrequent: 10
 
 is the same as...
 	
@@ -195,7 +200,7 @@ is the same as...
      - vowels
      - other
      - clusters
-     - infrequent: 15
+     - infrequent: 10
 
 The other shortcut is that ``base`` is actually a special character
 group. If it is defined, all other character groups will inherit default
@@ -223,8 +228,8 @@ Therefore:
 
 If you don't want this behavior for any of your keys, you can simply
 choose not to define ``base``. If you find it useful, but you want to
-get out of it at some point, you can set it to ``None`` (which happens
-to be spelled ``null`` in JSON and YAML).
+get out of it for a particular key, you can set it to ``None`` (which
+happens to be spelled ``null`` in JSON and YAML).
 
 .. code:: yaml
 
@@ -233,11 +238,125 @@ to be spelled ``null`` in JSON and YAML).
     groups: some groups here
 
 You can, of course, use any other key as your base and get into some
-rather sophisticated composition if you wish.
+rather sophisticated composition if you wish. Just don't create a
+dependency cycle or you'll end up in a never-ending loop. (Well, I guess
+it will end when Python hits its recursion limit.)
 
+One last thing yo may notice that's odd in this section is that one of
+the groups in ``base`` is ``infrequent: 10``. This is a way to
+manipulate the sort order of results. It might be a good time to explain
+that in a little more detail.
+
+Sorting and "Weight"
+~~~~~~~~~~~~~~~~~~~~
+Each possible replacement for any Romanization symbol or cluster may
+have one or more possible replacments, and therefore can be given as
+lists. As shorthand, if there is only one possible replacement, it may
+be a string, but it will be converted to a list containing that one
+item at runtime.
+
+As the items are added, they are assigned a ``weight``. In the common
+case, that weight is simply the index number in a the list.
+
+We have a line like this in our configuration file:
+
+.. code:: yaml
+
+   y: [יי, י]
+
+When we run this through the transkey instance we can see what happens
+to it:
+
+.. code:: python
+
+  >>> key['base']['y']
+  ReplacementList('y', [(0, 'יי'), (1, 'י')])
+  >>> key['base']['y'][0]
+  Replacement(0, 'יי')
+
+Basically, each item is explicitely assigned its weight. When you add
+two ``Replacement`` instances together, their weights are added, and
+their strings are contactinated.
+
+.. code:: python
+
+  >>> key['base']['y'][0] + key['base']['o'][0]
+  Replacement(0, 'ייו')
+
+Likewise, when two ``ReplacemntList`` items are added together, the
+Romanized strings are concatenated, and all the permutations of their
+original forms are combined as well:
+
+.. code:: python
+
+  >>> print(key['base']['y'] + key['base']['o'])
+  yo:
+   0 ייו
+   1 יי
+   1 יו
+   2 י
+
+Note:
+ As you may observe, the ``ReplacementList`` comes with pretty
+ formatting when used with ``print()`` for easier debugging.
+
+After all the variations have been generated, the resulting
+``ReplacementList`` can be sorted with its ``.sort()`` method according
+to these weights, from least to greatest.
+
+However, certain normalizations may appear infrequently, so that one
+wants to try everything else before resorting for that. These may be
+rare cases as is the case with my ``infrequent`` character group, or it
+may be a way to hedge bets against human error in input data.
+
+what ``infrequent: 10`` does is tell the ``TransKey`` instance to add
+``10`` to the index number of each Replacement to generate its
+weight. Groups used in this way will not overwrite groups that already
+values that already exist in the key. Instead, the replacement list will
+be extended to include these values. This will drag less likely options
+to the bottom of the list.
+
+.. code:: python
+
+  >>> print(add_reps( key['base'].getallparts('shalom')))
+  shalom:
+   0 שלומ
+   1 שלמ
+  10 שלאמ
+  10 שאלומ
+  11 שאלמ
+  20 שאלאמ
+
+A couple of colleagues pointed out to me that this weighting system
+seems very arbitrary in and it should be based on values between 0 and 1
+for a more scientific and statistical approach. However, the purpose of
+the weighting system is simply to allow the person defining to have a
+greater control over how results are sorted and have nothing to do with
+science or statistic. If you want to sink items in a particular group
+lower in the final sort order, stick a big fat number besides the
+replacement value. This is the only meaning the numbers have. Fear not!
+They only print to help you debug. There are some tricky methods you can
+use to convert the index-generated weights into something that looks
+statistical currently in the skunk works.
+
+Also note that weights can arbitrary be added to any replacement
+directly when it is defined. We could get a similar result for the word
+above if, instead of using the ``infrequent`` group, we had defined the
+letters like this:
+
+.. code:: yaml
+
+  ...
+  a: ['' [10, 'א']]
+  o: [ו, '', [10, א]]
+
+Any replacement that is a list or tuple of two beginning with an integer
+will use that integer as its weight assignment. In this way, one can
+have very direct control over how results are sorted.
+
+  
 Creating a TransKey Instance
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 
 .. code:: python
 
