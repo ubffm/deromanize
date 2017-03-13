@@ -25,7 +25,6 @@ import itertools
 import functools
 import operator
 import re
-import unicodedata
 
 
 class Empty:
@@ -496,7 +495,10 @@ class TransKey:
         self.base_key = base_key
         self.broken_clusters = profile.get('broken_clusters')
         if 'keys' in profile:
-            self.keygen(base_key)
+            try:
+                self.keygen(base_key)
+            except KeyError:
+                self[base_key] = ReplacementTrie()
 
             for k in profile['keys']:
                 if k == base_key:

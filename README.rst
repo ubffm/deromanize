@@ -18,11 +18,10 @@ A profile has fairly simple format. It is a dictionary which contains
 dictionaries that have all the information needed to build up
 transliteration rules. It can easily be stored as JSON or any format
 can represent the same data structures as JSON. I like to use YAML
-because it's easy to write (though I do not mean to endorse the
-abomination that is the YAML standard in so doing; Perhaps hjson would
-be a saner choice).
+because it's easy to write.
 
-The profile.
+The profile should contain at least one character group (the example
+below has two) and a ``keys`` section.
 
 .. code:: yaml
 
@@ -66,14 +65,30 @@ The profile.
   o: [ו, '']
   u: ו
 
-Note:
-  The letters in the lists are reversed on this webpage because of
-  automatic bidi resolution. Most editors also pull these shenanigans,
-  which is great for text, but not great for code. Emacs has options for
-  this, and Vim doesn't even try to fix bidi (though your terminal
-  might). I don't know what kind of options your favorite editor has for
-  falling back to "stupid" LTR text flow when it screws up code
-  readability.
+Note::
+  The letters in the arrays are reversed on this web page when viewed in
+  most modern web browsers because of automatic bidi resolution. Most
+  editors also pull these shenanigans, which is great for text, but not
+  great for code. Emacs has options for this, and Vim doesn't even try
+  to fix bidi (though your terminal might). I don't know what kind of
+  options your favorite editor has for falling back to "stupid" LTR text
+  flow when it screws up code readability.
+
+Character groups:
+  
+Each character group is a dictionary containing the Romanized form
+character as a key, and the original form as the value. If a Romanized
+key can have multiple possible interpretations, they may be put in
+lists. The person defining the standard ought to put these replacements
+in the order they believe to most frequent in the actual language, as
+results will ultimately be sorted based on the index numbers of these
+lists.
+
+Romanized forms can contain an arbitrary number of characters, so
+digraphs will be fine. You may even wish to define longer clusters to,
+for example, provide uniform handling of common morphological
+affixes. ``deromanize`` uses greedy matching, so the longest possible
+cluster will always be matched.
 
 These character classes are hooked into different places to enable some
 fuzzy cluster generation (more on that later), and they can also be used
