@@ -189,13 +189,13 @@ is the same as...
 	
  .. code:: yaml
 
-    base:
-      groups:
-	- consonants
-	- vowels
-	- other
-	- clusters
-	- infrequent: 15
+  base:
+    groups:
+      - consonants
+      - vowels
+      - other
+      - clusters
+      - infrequent: 15
 
 The other shortcut is that ``base`` is actually a special character
 group. If it is defined, all other character groups will inherit default
