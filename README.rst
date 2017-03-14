@@ -76,9 +76,9 @@ Note:
   to fix bidi (though your terminal might). I don't know what kind of
   options your favorite editor has for falling back to "stupid" LTR text
   flow when it screws up code readability.
-  
+
 Character groups:
-  
+
 Each character group is a dictionary containing the Romanized form
 character as a key, and the original form as the value. If a Romanized
 key can have multiple possible interpretations, they may be put in
@@ -123,7 +123,7 @@ From here, we can start sending words to the ``base`` key and see what
 comes out.
 
 .. code:: python
-  
+
   >>> key['base'].getallparts('shalom')
   [ReplacementList('sh', [Replacement(0, 'ש')]), ReplacementList('a',
   [Replacement(0, '')]), ReplacementList('l', [Replacement(0, 'ל')]),
@@ -156,7 +156,7 @@ Defining Keys
 ~~~~~~~~~~~~~
 
 .. code:: yaml
-  
+
   keys:
     base:
       groups:
@@ -167,13 +167,13 @@ Defining Keys
         - infrequent: 10
 
     front:
-      base: base
+      parent: base
       groups:
         - beginning
         - beginning patterns
 
     end:
-      base: base
+      parent: base
       groups: final
       suffix: true
 
@@ -183,15 +183,15 @@ if a key only contains a list, that list is automatically assigned to
 
  .. code:: yaml
 
-    base:
-      - consonants
-      - vowels
-      - other
-      - clusters
-      - infrequent: 10
+  base:
+    - consonants
+    - vowels
+    - other
+    - clusters
+    - infrequent: 10
 
 is the same as...
-	
+
 .. code:: yaml
 
  base:
@@ -202,29 +202,28 @@ is the same as...
      - clusters
      - infrequent: 10
 
-The other shortcut is that ``base`` is actually a special character
-group. If it is defined, all other character groups will inherit default
-from it as a prototype character group which you can selectively
-override and extend with other character groups to build all the groups
-you need.
+The other shortcut is that ``base`` is actually a special key name.  If
+it is defined, all other character groups will inherit default from it
+as a prototype character group which you can selectively override and
+extend with other character groups to build all the groups you need.
 
 Therefore:
 
 .. code:: yaml
-  
-    front:
-      - beginning
-      - beginning patterns
+
+  front:
+    - beginning
+    - beginning patterns
 
 \... is the same as...
 
 .. code:: yaml
-  
-    front:
-      base: base
-      groups:
-        - beginning
-        - beginning patterns
+
+  front:
+    base: base
+    groups:
+      - beginning
+      - beginning patterns
 
 If you don't want this behavior for any of your keys, you can simply
 choose not to define ``base``. If you find it useful, but you want to
@@ -250,13 +249,13 @@ that in a little more detail.
 Sorting and "Weight"
 ~~~~~~~~~~~~~~~~~~~~
 Each possible replacement for any Romanization symbol or cluster may
-have one or more possible replacments, and therefore can be given as
+have one or more possible replacements, and therefore can be given as
 lists. As shorthand, if there is only one possible replacement, it may
 be a string, but it will be converted to a list containing that one
 item at runtime.
 
 As the items are added, they are assigned a ``weight``. In the common
-case, that weight is simply the index number in a the list.
+case, that weight is simply the index number in the list.
 
 We have a line like this in our configuration file:
 
@@ -264,7 +263,7 @@ We have a line like this in our configuration file:
 
    y: [יי, י]
 
-When we run this through the transkey instance we can see what happens
+When we run this through the TransKey instance we can see what happens
 to it:
 
 .. code:: python
@@ -274,9 +273,9 @@ to it:
   >>> key['base']['y'][0]
   Replacement(0, 'יי')
 
-Basically, each item is explicitely assigned its weight. When you add
+Basically, each item is explicitly assigned its weight. When you add
 two ``Replacement`` instances together, their weights are added, and
-their strings are contactinated.
+their strings are concatenated.
 
 .. code:: python
 
@@ -309,7 +308,7 @@ wants to try everything else before resorting for that. These may be
 rare cases as is the case with my ``infrequent`` character group, or it
 may be a way to hedge bets against human error in input data.
 
-what ``infrequent: 10`` does is tell the ``TransKey`` instance to add
+What ``infrequent: 10`` does is tell the ``TransKey`` instance to add
 ``10`` to the index number of each Replacement to generate its
 weight. Groups used in this way will not overwrite groups that already
 values that already exist in the key. Instead, the replacement list will
@@ -332,7 +331,7 @@ seems very arbitrary in and it should be based on values between 0 and 1
 for a more scientific and statistical approach. However, the purpose of
 the weighting system is simply to allow the person defining to have a
 greater control over how results are sorted and have nothing to do with
-science or statistic. If you want to sink items in a particular group
+science or statistics. If you want to sink items in a particular group
 lower in the final sort order, stick a big fat number besides the
 replacement value. This is the only meaning the numbers have. Fear not!
 They only print to help you debug. There are some tricky methods you can
@@ -349,12 +348,16 @@ letters like this:
   ...
   a: ['' [10, 'א']]
   o: [ו, '', [10, א]]
+  ...
+
+Note:
+ Here are those bidi shenanigans I mention earlier. Paste into Vim or
+ something to see the correct character order.
 
 Any replacement that is a list or tuple of two beginning with an integer
 will use that integer as its weight assignment. In this way, one can
 have very direct control over how results are sorted.
 
-  
 Creating a TransKey Instance
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

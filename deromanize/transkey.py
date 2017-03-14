@@ -38,7 +38,7 @@ class Empty:
 empty = Empty()
 
 
-class Trie:
+class Trie(abc.MutableMapping):
     """a prefix tree for dealing with transliteration standards with digraphs.
     This could just be a dictionary if there weren't digraphs in
     transliteration standards.
@@ -60,6 +60,9 @@ class Trie:
         if dictionary is not None:
             self.update(dictionary)
 
+    def __bool__(self):
+        return bool(self.root[1])
+
     def __setitem__(self, key, value):
         """follow (and generate, if needed) all neccesary intermediate nodes to
         create a new endpoint.
@@ -73,11 +76,6 @@ class Trie:
     def __repr__(self):
         return self.template % self.dict()
 
-    def update(self, dictionary):
-        """add new nodes and endpoints from keys and values in a dictionary."""
-        for key, value in dictionary.items():
-            self[key] = value
-
     def _getnode(self, key):
         """get a node out of the internal prefix tree. An implementation
         detail.
@@ -87,18 +85,32 @@ class Trie:
             node = node[1][char]
         return node
 
+    def _getstack(self, key):
+        node = self.root
+        stack = []
+        for char in key:
+            stack.append((node, char))
+            node = node[1][char]
+        return stack, node
+
     def __getitem__(self, key):
         node = self._getnode(key)
         if node[0] == empty:
             raise KeyError(key)
         return node[0]
 
-    def __contains__(self, key):
-        try:
-            self[key]
-        except KeyError:
-            return False
-        return True
+    def __delitem__(self, key):
+        stack, node = self._getstack(key)
+        if node[0] == empty:
+            raise KeyError(key)
+        node[0] = empty
+
+        for parent, key in reversed(stack):
+            node = parent[1][key]
+            if node[0] == empty and not node[1]:
+                del parent[1][key]
+            else:
+                break
 
     def containsnode(self, key):
         """check if a node on the tree exists without regard for whether it
@@ -110,22 +122,7 @@ class Trie:
             return False
         return True
 
-    def setdefault(self, key, default):
-        """like dict.setdefault(). refer to the documentation."""
-        try:
-            return self[key]
-        except KeyError:
-            self[key] = default
-            return default
-
-    def get(self, key, default):
-        """like dict.get(). refer to the documentation."""
-        try:
-            return self[key]
-        except KeyError:
-            return default
-
-    def items(self, key=None):
+    def items(self):
         """return a generator yielding all keys and values with valid
         endpoints. if "key" argument is provided, yield all keys and values
         where the key starts with "key".
@@ -133,12 +130,7 @@ class Trie:
         This method traverses the tree structure with call-stack recursion, so
         it isn't the cheapest thing ever, on the other hand, it's lazy, so, eh.
         """
-        if key is None:
-            node = self.root
-            key = ''
-        else:
-            node = self._getnode(key)
-        return self._itemize(node, key)
+        return self._itemize(self.root)
 
     def _itemize(self, topnode, keypart=''):
         for key, node in topnode[1].items():
@@ -147,21 +139,15 @@ class Trie:
                 yield (newkeypart, node[0])
             yield from self._itemize(node, newkeypart)
 
-    def keys(self, key=None):
-        return (k for k, _ in self.items(key))
-
     def __iter__(self):
-        return self.keys()
+        return (k for k, _ in self.items())
 
-    def values(self, key=None):
-        node = self.root if key is None else self._getnode(key)
-        return self._values(node)
+    def values(self):
+        return (v for _, v in self.items())
 
-    def _values(self, topnode):
-        for key, node in topnode[1].items():
-            if node[0] != empty:
-                yield node[0]
-            yield from self._values(node)
+    def __len__(self):
+        print('here')
+        return len(list(self.__iter__()))
 
     def copy(self):
         """make a copy of the prefix tree. Note that, unlike builtins, this is
@@ -172,8 +158,8 @@ class Trie:
         new.root = copy.deepcopy(self.root)
         return new
 
-    def dict(self, key=None):
-        return dict(self.items(key))
+    def dict(self):
+        return dict(self.items())
 
     def getpart(self, key):
         """takes a key and matches as much of it as possible. returns a tuple
@@ -212,9 +198,7 @@ class Trie:
 
 
 class SuffixTree(Trie):
-    """Subclass of Trie that shouldn't technically be. I just want a cheap way
-    to inherit all it's methods. :(
-    """
+    """Subclass of Trie that takes it from the back."""
     template = 'SuffixTree(%r)'
 
     def __setitem__(self, key, value):
@@ -222,6 +206,9 @@ class SuffixTree(Trie):
 
     def _getnode(self, key):
         return super()._getnode(key[::-1])
+
+    def _getstack(self, key):
+        return super._getstack(key[::-1])
 
     def getpart(self, key):
         value, remainder = super().getpart(key[::-1])
@@ -255,24 +242,6 @@ class ReplacementTrie(Trie):
         else:
             for k, v in dictionary.items():
                 self.__setitem__(k, v, weight)
-
-    def soft_update(self, dictionary, weight=None, parent=None):
-        """add items from dictionary are only if they do not already exist in
-        the current dictionary.
-        """
-        if parent:
-            for k, v in dictionary.items():
-                if k not in self:
-                    if any(i in k for i in parent.char_sets):
-                        generated = parent.patterngen(
-                            k, v, broken_clusters=parent.broken_clusters)
-                        self.soft_update(generated, weight)
-                    else:
-                        self.__setitem__(k, v, weight)
-        else:
-            for k, v in dictionary.items():
-                if k not in self:
-                    self.__setitem__(k, v, weight)
 
     def extend(self, dictionary, weight=None, parent=None):
         """For each item in in the input dictionary, the coresponding
@@ -470,15 +439,27 @@ class CharSets:
             self.parse(matched)
         return self.parsed.getpart(key)
 
+    def getallparts(self, key):
+        results = []
+        remainder = key
+        while remainder:
+            try:
+                value, remainder = self.getpart(remainder)
+            except KeyError:
+                value = remainder[0]
+                remainder = remainder[1:]
+            results.append(value)
+        return results
+
     def parse(self, key):
         def_ = self.unparsed[key]
         try:
             chars = self.key.profile[def_]
-            base = self.key[self.key.base_key]
+            parent = self.key[self.key.base_key]
         except (TypeError, KeyError):
             chars = self.key.profile[def_['chars']]
-            base = self.key.get_base(def_['base'])
-        self.parsed[key] = [base[c] for c in chars]
+            parent = self.key.get_base(def_['base'])
+        self.parsed[key] = [parent[c] for c in chars]
 
 
 class TransKey:
@@ -499,7 +480,6 @@ class TransKey:
                 self.keygen(base_key)
             except KeyError:
                 self[base_key] = ReplacementTrie()
-
             for k in profile['keys']:
                 if k == base_key or k in self.keys:
                     continue
@@ -516,14 +496,14 @@ class TransKey:
         if isinstance(info, (list, str)):
             info = {'groups': info}
         suffix = info.get('suffix')
-        base = info.get('base',
-                        None if keyname == self.base_key else self.base_key)
+        parent = info.get(
+            'parent', None if keyname == self.base_key else self.base_key)
         groups = info.get('groups', [])
         if isinstance(groups, str):
             groups = [groups]
-        if base not in self.keys and base is not None:
-            self.keygen(base)
-        key = self.new(keyname, base=base, suffix=suffix)
+        if parent not in self.keys and parent is not None:
+            self.keygen(parent)
+        key = self.new(keyname, parent=parent, suffix=suffix)
         for g in groups:
             if isinstance(g, str):
                 key.update(self.profile[g], parent=self)
@@ -537,14 +517,11 @@ class TransKey:
         self[keyname] = key
 
     def new(self, key_name, *profile_groups,
-            base=None, weight=None, suffix=False):
-        base = self.get_base(base)
+            parent=None, weight=None, suffix=False):
+        parent = self.get_base(parent)
         dicts = (self.profile[g] for g in profile_groups)
-        self[key_name] = base.child(*dicts, weight=weight, suffix=suffix)
+        self[key_name] = parent.child(*dicts, weight=weight, suffix=suffix)
         return self[key_name]
-
-    def base2new(self, *args, **kwargs):
-        return self.new(*args, base=self.base_key, **kwargs)
 
     def extend(self, key_name, *profile_groups, weight=None):
         for g in profile_groups:
@@ -554,9 +531,9 @@ class TransKey:
         for g in profile_groups:
             self[key_name].update(self.profile[g], weight)
 
-    def definecharset(self, char, character_set, base=None):
-        base = self.get_base(base)
-        self.char_sets[char] = [base[c] for c in character_set]
+    def definecharset(self, char, character_set, parent=None):
+        parent = self.get_base(parent)
+        self.char_sets[char] = [parent[c] for c in character_set]
 
     def patterngen(self, key_pattern, rep_pattern,
                    weight=0, broken_clusters=None):
@@ -640,15 +617,12 @@ class TransKey:
         return ''.join(newparts)
 
     def patterns2key(self, target, pattern_dict, weight=None,
-                     broken_clusters=None, soft=False):
+                     broken_clusters=None):
         target = self.get_base(target)
         for pattern_key, pattern_rep in pattern_dict.items():
             generated = self.patterngen(pattern_key, pattern_rep,
                                         weight=weight, broken_clusters=None)
-            if soft:
-                target.soft_update(generated)
-            else:
-                target.update(generated)
+            target.update(generated)
 
     def processor(self, func):
         """decorator to define the process for decoding words. Basicaly just
