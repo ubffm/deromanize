@@ -24,7 +24,6 @@ from collections import abc
 import itertools
 import functools
 import operator
-import re
 
 
 class Empty:
@@ -439,17 +438,21 @@ class CharSets:
             self.parse(matched)
         return self.parsed.getpart(key)
 
-    def getallparts(self, key):
+    def parse_pattern(self, key):
         results = []
         remainder = key
+        counter = 0
+        index = {}
         while remainder:
             try:
                 value, remainder = self.getpart(remainder)
+                counter += 1
+                index[counter] = len(results)
             except KeyError:
                 value = remainder[0]
                 remainder = remainder[1:]
             results.append(value)
-        return results
+        return results, index
 
     def parse(self, key):
         def_ = self.unparsed[key]
@@ -541,18 +544,10 @@ class TransKey:
         generates all possible matches ahead of time.
         """
         # parse pattern strings
-        key_pattern = [
-            i for i in
-            re.split('(' + '|'.join(self.char_sets) + ')', key_pattern)
-            if i]
+        blocks, pattern_idx = self.char_sets.parse_pattern(key_pattern)
         if isinstance(rep_pattern, str):
             rep_pattern = [rep_pattern]
-        rep_pattern = [[i for i in re.split(r'(\d)', str(r)) if i]
-                       for r in rep_pattern]
-
-        blocks, pattern_idx = self._parse_key_blocks(key_pattern)
-
-        # generate replacement lists (and keys) for each product
+        rep_pattern = [self._parse_rep(i) for i in rep_pattern]
         generated = {}
         for keyparts in itertools.product(*blocks):
             key = self._get_sane_key(keyparts, broken_clusters)
@@ -560,8 +555,8 @@ class TransKey:
                 reps = []
                 for block in rep_group:
                     try:
-                        reps.append(keyparts[pattern_idx[int(block)]])
-                    except ValueError:
+                        reps.append(keyparts[pattern_idx[block]])
+                    except KeyError:
                         reps.append(ReplacementList('', [(i, block)]))
                 replacement = add_reps(reps)
                 generated.setdefault(
@@ -569,21 +564,18 @@ class TransKey:
 
         return generated
 
-    def _parse_key_blocks(self, key_pattern):
-        """Turn key_pattern in to a list of iterables. make a dict that keeps
-        track of the indicies of fuzzy characters.
-        """
-        counter = 1
-        pattern_idx = {}
-        blocks = []
-        for i, part in enumerate(key_pattern):
+    @staticmethod
+    def _parse_rep(rep):
+        results = []
+        remainder = rep
+        while remainder:
             try:
-                blocks.append(self.char_sets[part])
-                pattern_idx[counter] = i
-                counter += 1
+                value, remainder = esc_numbs.getpart(remainder)
             except KeyError:
-                blocks.extend(part)
-        return blocks, pattern_idx
+                value = remainder[0]
+                remainder = remainder[1:]
+            results.append(value)
+        return results
 
     @staticmethod
     def _get_sane_key(keyparts, broken_clusters=None):
@@ -675,6 +667,16 @@ def add_reps(reps):
         return functools.reduce(operator.add, reps)
     except TypeError:
         return get_empty_replist()
+
+
+esc_numbs = Trie()
+
+for i in range(1, 10):
+    s = str(i)
+    esc_numbs['\\'+s] = i
+    esc_numbs['\\\\'+s] = '\\' + s
+
+del s, i
 
 
 if __name__ == '__main__':

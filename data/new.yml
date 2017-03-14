@@ -107,7 +107,7 @@ beginning:
   ṿ: ו
 
 beginning patterns:
-  FiCC: ["123", 1י23]
+  FiCC: [\1\2\3, \1י\2\3]
 
 flattened:
   v: b
