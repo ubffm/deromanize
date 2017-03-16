@@ -81,7 +81,7 @@ diphthongs:
 
 
 front:
-  V: 1̓
-  hV: 1̔
-  D: 1̓
-  hD: 1̔
+  V: \1̓
+  hV: \1̔
+  D: \1̓
+  hD: \1̔

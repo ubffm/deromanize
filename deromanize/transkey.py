@@ -24,6 +24,8 @@ from collections import abc
 import itertools
 import functools
 import operator
+import json
+import os
 
 
 class Empty:
@@ -145,7 +147,6 @@ class Trie(abc.MutableMapping):
         return (v for _, v in self.items())
 
     def __len__(self):
-        print('here')
         return len(list(self.__iter__()))
 
     def copy(self):
@@ -213,8 +214,8 @@ class SuffixTree(Trie):
         value, remainder = super().getpart(key[::-1])
         return value, remainder[::-1]
 
-    def items(self, key=None):
-        return ((k[::-1], v) for k, v in super().items(key))
+    def items(self):
+        return ((k[::-1], v) for k, v in super().items())
 
     def getallparts(self, key):
         return super().getallparts(key)[::-1]
@@ -469,24 +470,37 @@ class TransKey:
     """an object to build up a transliteration key from a config file. (or
     rather, a python dictionary unmarshalled from a config file.)
     """
-    def __init__(self, profile, base_key='base'):
-        self.profile = profile
-        try:
-            self.char_sets = CharSets(profile['char_sets'], self)
-        except KeyError:
-            self.char_sets = {}
-        self.keys = {}
+    def __init__(self, profile, base_key='base', mtime=None, from_cache=False):
+        self.mtime = mtime
         self.base_key = base_key
-        self.broken_clusters = profile.get('broken_clusters')
-        if 'keys' in profile:
+        self.keys = {}
+        if from_cache:
+            self.profile = profile['profile']
+            self.normalize_profile()
+            self.broken_clusters = profile.get('broken_clusters')
+            for k, v in profile['keys'].items():
+                if self.profile['keys'][k].get('suffix'):
+                    trie = ReplacementSuffixTree
+                else:
+                    trie = ReplacementTrie
+                self[k] = trie(v)
+        else:
+            self.profile = profile
+            self.normalize_profile()
+            self.broken_clusters = profile.get('broken_clusters')
             try:
-                self.keygen(base_key)
+                self.char_sets = CharSets(profile['char_sets'], self)
             except KeyError:
-                self[base_key] = ReplacementTrie()
-            for k in profile['keys']:
-                if k == base_key or k in self.keys:
-                    continue
-                self.keygen(k)
+                self.char_sets = {}
+            if 'keys' in profile:
+                try:
+                    self.keygen(base_key)
+                except KeyError:
+                    self[base_key] = ReplacementTrie()
+                for k in profile['keys']:
+                    if k == base_key or k in self.keys:
+                        continue
+                    self.keygen(k)
 
     def __setitem__(self, key, value):
         self.keys[key] = value
@@ -494,16 +508,20 @@ class TransKey:
     def __getitem__(self, key):
         return self.keys[key]
 
+    def normalize_profile(self):
+        keys = self.profile['keys']
+        for k, v in keys.items():
+            if isinstance(v, (list, str)):
+                keys[k] = {'groups': v}
+            if isinstance(keys[k]['groups'], str):
+                keys[k]['groups'] = [keys[k]['groups']]
+
     def keygen(self, keyname):
         info = self.profile['keys'][keyname]
-        if isinstance(info, (list, str)):
-            info = {'groups': info}
         suffix = info.get('suffix')
         parent = info.get(
             'parent', None if keyname == self.base_key else self.base_key)
         groups = info.get('groups', [])
-        if isinstance(groups, str):
-            groups = [groups]
         if parent not in self.keys and parent is not None:
             self.keygen(parent)
         key = self.new(keyname, parent=parent, suffix=suffix)
@@ -538,20 +556,20 @@ class TransKey:
         parent = self.get_base(parent)
         self.char_sets[char] = [parent[c] for c in character_set]
 
-    def patterngen(self, key_pattern, rep_pattern,
+    def patterngen(self, key_pattern, rep_patterns,
                    weight=0, broken_clusters=None):
         """implement some kind of pattern matching for character classes that
         generates all possible matches ahead of time.
         """
         # parse pattern strings
         blocks, pattern_idx = self.char_sets.parse_pattern(key_pattern)
-        if isinstance(rep_pattern, str):
-            rep_pattern = [rep_pattern]
-        rep_pattern = [self._parse_rep(i) for i in rep_pattern]
+        if isinstance(rep_patterns, str) or isinstance(rep_patterns[0], int):
+            rep_patterns = [rep_patterns]
+        rep_patterns = [self._parse_rep(i) for i in rep_patterns]
         generated = {}
         for keyparts in itertools.product(*blocks):
             key = self._get_sane_key(keyparts, broken_clusters)
-            for i, rep_group in enumerate(rep_pattern):
+            for i, rep_group in enumerate(rep_patterns):
                 reps = []
                 for block in rep_group:
                     try:
@@ -653,8 +671,17 @@ class TransKey:
         elif isinstance(base, ReplacementTrie):
             return base
         else:
-            raise TypeError('%s is not supported as "base" argument" '
+            raise TypeError('%s is not supported as "base" argument.'
                             % type(base))
+
+    def serialize(self, file, *args, **kwargs):
+        file.write(str(self.mtime) + '\n')
+        data = {'keys': {}, 'profile': self.profile}
+
+        for k, v in self.keys.items():
+            data['keys'][k] = v.simplify()
+
+        file.write(json.dumps(data, *args, **kwargs))
 
 
 def get_empty_replist():
@@ -669,8 +696,25 @@ def add_reps(reps):
         return get_empty_replist()
 
 
-esc_numbs = Trie()
+def cached_keys(loader, profile_file, cache_file, base_key='base'):
+    mtime = os.stat(profile_file.name).st_mtime
+    cached_mtime = float(cache_file.readline())
+    if mtime == cached_mtime:
+        return TransKey(json.loads(cache_file.readline()),
+                        base_key=base_key,
+                        mtime=mtime,
+                        from_cache=True)
+    else:
+        cache_file.close()
+        key = TransKey(loader(profile_file),
+                       base_key=base_key,
+                       mtime=mtime)
+        with open(cache_file.name, 'w') as cache:
+            key.serialize(cache)
+        return key
 
+
+esc_numbs = Trie()
 for i in range(1, 10):
     s = str(i)
     esc_numbs['\\'+s] = i

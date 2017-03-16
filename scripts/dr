@@ -3,14 +3,21 @@ import os
 import sys
 import deromanize
 import yaml
+from pathlib import Path
 
-PROJECT_DIR = os.path.dirname(os.path.dirname(deromanize.__file__))
-CONFIG_FILE = os.path.join(PROJECT_DIR, 'data', 'new.yml')
+PROJECT_DIR = Path(deromanize.__file__).parents[1]
+CONFIG_FILE = PROJECT_DIR/'data'/'new.yml'
 CUTOFF = 5
-PROFILE = yaml.safe_load(open(CONFIG_FILE))
+CACHE = Path('.cache')
 
-# define the key
-key = deromanize.TransKey(PROFILE)
+with CONFIG_FILE.open() as config:
+    if not CACHE.exists():
+        with CACHE.open('w') as cache:
+            cache.write('0')
+
+    with CACHE.open() as cache:
+        key = deromanize.cached_keys(yaml.safe_load, config, cache)
+    PROFILE = key.profile
 
 @key.processor
 def decode(key, word):

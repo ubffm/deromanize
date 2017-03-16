@@ -1,3 +1,8 @@
 from .transkey import (
-        TransKey, add_reps, get_empty_replist, ReplacementList, Replacement)
+        TransKey,
+        cached_keys,
+        add_reps,
+        get_empty_replist,
+        ReplacementList,
+        Replacement)
 
