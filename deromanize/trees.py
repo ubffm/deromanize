@@ -207,7 +207,7 @@ class SuffixTree(Trie):
     def _getnode(self, key):
         return super()._getnode(key[::-1])
 
-    def _getstack(self, key):
+    def getstack(self, key):
         return super._getstack(key[::-1])
 
     def getpart(self, key):
