@@ -42,7 +42,7 @@ class Trie(abc.MutableMapping):
     """
     template = 'Trie(%r)'
 
-    def __init__(self, dictionary=None):
+    def __init__(self, initializer=None):
         """Trie([dictionary])
 
         The optional dictionary parameter may be used to create a prefix tree
@@ -50,8 +50,8 @@ class Trie(abc.MutableMapping):
         endpoints
         """
         self.root = [empty, {}]
-        if dictionary is not None:
-            self.update(dictionary)
+        if initializer is not None:
+            self.update(initializer)
 
     def __bool__(self):
         return bool(self.root[1])
@@ -63,7 +63,6 @@ class Trie(abc.MutableMapping):
         node = self.root
         for char in key:
             node = node[1].setdefault(char, [empty, {}])
-
         node[0] = value
 
     def __repr__(self):
@@ -78,13 +77,21 @@ class Trie(abc.MutableMapping):
             node = node[1][char]
         return node
 
-    def _getstack(self, key):
+    def getstack(self, key):
+        """given a key, return a tuple containing the final node along with a
+        stack of all the parent nodes (starting from the root). This stack is a
+        list of tuples where the first item is the node itself and the second
+        is the key that leads to the child. The only reason this function
+        exists is so the __delitem__ function could be written, so
+        MutableMapping could be leveraged as base class. Still, might be other
+        interesting things to do with a stack of nodes.
+        """
         node = self.root
         stack = []
         for char in key:
             stack.append((node, char))
             node = node[1][char]
-        return stack, node
+        return node, stack
 
     def __getitem__(self, key):
         node = self._getnode(key)
@@ -93,7 +100,7 @@ class Trie(abc.MutableMapping):
         return node[0]
 
     def __delitem__(self, key):
-        stack, node = self._getstack(key)
+        node, stack = self.getstack(key)
         if node[0] == empty:
             raise KeyError(key)
         node[0] = empty
@@ -151,6 +158,7 @@ class Trie(abc.MutableMapping):
         return new
 
     def dict(self):
+        """return a dictionary from the prefix tree"""
         return dict(self.items())
 
     def getpart(self, key):

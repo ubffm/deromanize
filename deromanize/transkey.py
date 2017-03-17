@@ -29,73 +29,6 @@ import os
 from .trees import Trie, SuffixTree
 
 
-class ReplacementTrie(Trie):
-    template = 'ReplacementTrie(%r)'
-
-    def __repr__(self):
-        return self.template % self.simplify()
-
-    def __setitem__(self, key, value, weight=None):
-        super().__setitem__(key, self._ensurereplist(key, value, weight))
-
-    def update(self, dictionary, weight=None, parent=None):
-        if parent:
-            for k, v in dictionary.items():
-                if any(i in k for i in parent.char_sets):
-                    generated = parent.patterngen(
-                        k, v, broken_clusters=parent.broken_clusters)
-                    self.update(generated, weight)
-                else:
-                    self.__setitem__(k, v, weight)
-        else:
-            for k, v in dictionary.items():
-                self.__setitem__(k, v, weight)
-
-    def extend(self, dictionary, weight=None, parent=None):
-        """For each item in in the input dictionary, the coresponding
-        replacement list in the trie is extended with the given replacemnts.
-        """
-        if parent:
-            for k, v in dictionary.items():
-                if any(i in k for i in parent.char_sets):
-                    generated = parent.patterngen(
-                        k, v, broken_clusters=parent.broken_clusters)
-                    self.extend(generated, weight)
-                else:
-                    self.setdefault(k, ReplacementList(k)).extend(v, weight)
-        else:
-            for k, v in dictionary.items():
-                self.setdefault(k, ReplacementList(k)).extend(v, weight)
-
-    def simplify(self):
-        return {k: [(i.weight, i.value) for i in v.data]
-                for k, v in self.items()}
-
-    def child(self, *dicts, weight=None, suffix=False):
-        child = ReplacementSuffixTree() if suffix else ReplacementTrie()
-        if type(self) is type(child):
-            child = self.copy()
-        else:
-            child.update(copy.deepcopy(self.dict()))
-        for d in dicts:
-            child.update(d, weight)
-        return child
-
-    @staticmethod
-    def _ensurereplist(key, value, weight=None):
-        if isinstance(value, ReplacementList):
-            if weight is not None:
-                value.add_weight(weight)
-            return value
-        elif not isinstance(value, list) or isinstance(value[0], int):
-            value = [value]
-        return ReplacementList(key, value, weight)
-
-
-class ReplacementSuffixTree(ReplacementTrie, SuffixTree):
-    template = 'ReplacementSuffixTree(%r)'
-
-
 class Replacement:
     """a type for holding a replacement and it's weight. A Replacment on its
     own doesn't know what it's replacing. It should be an item in a
@@ -214,6 +147,73 @@ class ReplacementList(abc.MutableSequence):
             seen.add(rep.value)
         for i in repeats[::-1]:
             self.data.remove(i)
+
+
+class ReplacementTrie(Trie):
+    template = 'ReplacementTrie(%r)'
+
+    def __repr__(self):
+        return self.template % self.simplify()
+
+    def __setitem__(self, key, value, weight=None):
+        super().__setitem__(key, self._ensurereplist(key, value, weight))
+
+    def update(self, dictionary, weight=None, parent=None):
+        if parent:
+            for k, v in dictionary.items():
+                if any(i in k for i in parent.char_sets):
+                    generated = parent.patterngen(
+                        k, v, broken_clusters=parent.broken_clusters)
+                    self.update(generated, weight)
+                else:
+                    self.__setitem__(k, v, weight)
+        else:
+            for k, v in dictionary.items():
+                self.__setitem__(k, v, weight)
+
+    def extend(self, dictionary, weight=None, parent=None):
+        """For each item in in the input dictionary, the coresponding
+        replacement list in the trie is extended with the given replacemnts.
+        """
+        if parent:
+            for k, v in dictionary.items():
+                if any(i in k for i in parent.char_sets):
+                    generated = parent.patterngen(
+                        k, v, broken_clusters=parent.broken_clusters)
+                    self.extend(generated, weight)
+                else:
+                    self.setdefault(k, ReplacementList(k)).extend(v, weight)
+        else:
+            for k, v in dictionary.items():
+                self.setdefault(k, ReplacementList(k)).extend(v, weight)
+
+    def simplify(self):
+        return {k: [(i.weight, i.value) for i in v.data]
+                for k, v in self.items()}
+
+    def child(self, *dicts, weight=None, suffix=False):
+        child = ReplacementSuffixTree() if suffix else ReplacementTrie()
+        if type(self) is type(child):
+            child = self.copy()
+        else:
+            child.update(copy.deepcopy(self.dict()))
+        for d in dicts:
+            child.update(d, weight)
+        return child
+
+    @staticmethod
+    def _ensurereplist(key, value, weight=None):
+        if isinstance(value, ReplacementList):
+            if weight is not None:
+                value.add_weight(weight)
+            return value
+        elif not isinstance(value, list) or isinstance(value[0], int):
+            value = [value]
+        return ReplacementList(key, value, weight)
+
+
+class ReplacementSuffixTree(ReplacementTrie, SuffixTree):
+    template = 'ReplacementSuffixTree(%r)'
 
 
 class CharSets:
