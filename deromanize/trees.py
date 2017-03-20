@@ -43,13 +43,14 @@ class Trie(abc.MutableMapping):
     template = 'Trie(%r)'
 
     def __init__(self, initializer=None):
-        """Trie([dictionary])
+        """Trie([initializer])
 
-        The optional dictionary parameter may be used to create a prefix tree
-        with all nodes based on the dictionary keys, and all vaules as
-        endpoints
+        The optional initializer parameter may be used to create a prefix tree
+        the same way it is used to create a dictionary (argument should be a
+        dictionary or an iterable with two-tuples.
         """
         self.root = [empty, {}]
+        self._len = 0
         if initializer is not None:
             self.update(initializer)
 
@@ -63,6 +64,8 @@ class Trie(abc.MutableMapping):
         node = self.root
         for char in key:
             node = node[1].setdefault(char, [empty, {}])
+        if node[0] == empty:
+            self._len += 1
         node[0] = value
 
     def __repr__(self):
@@ -103,6 +106,7 @@ class Trie(abc.MutableMapping):
         node, stack = self.getstack(key)
         if node[0] == empty:
             raise KeyError(key)
+        self._len -= 1
         node[0] = empty
 
         for parent, key in reversed(stack):
@@ -122,15 +126,21 @@ class Trie(abc.MutableMapping):
             return False
         return True
 
-    def items(self):
-        """return a generator yielding all keys and values with valid
-        endpoints. if "key" argument is provided, yield all keys and values
-        where the key starts with "key".
+    def items(self, prefix=None):
+        """return a generator yielding all keys and values with valid endpoints.
+        "prefix" argument is provided, yield all keys and values where the key
+        starts with "prefix".
 
         This method traverses the tree structure with call-stack recursion, so
         it isn't the cheapest thing ever, on the other hand, it's lazy, so, eh.
         """
-        return self._itemize(self.root)
+        if prefix:
+            topnode = self._getnode(prefix)
+            keypart = prefix
+        else:
+            topnode = self.root
+            keypart = ''
+        return self._itemize(topnode, keypart)
 
     def _itemize(self, topnode, keypart=''):
         for key, node in topnode[1].items():
@@ -139,14 +149,24 @@ class Trie(abc.MutableMapping):
                 yield (newkeypart, node[0])
             yield from self._itemize(node, newkeypart)
 
-    def __iter__(self):
-        return (k for k, _ in self.items())
+    def keys(self, prefix=None):
+        """Return an generator (not a dict view!) with all keys. optional
+        `prefix` argument limits results to keys beginning with the given
+        prefix.
+        """
+        return (k for k, _ in self.items(prefix))
 
-    def values(self):
-        return (v for _, v in self.items())
+    __iter__ = keys
+
+    def values(self, prefix=None):
+        """Return an generator (not a dict view!) with all values. optional
+        `prefix` argument limits results to keys beginning with the given
+        prefix.
+        """
+        return (v for _, v in self.items(prefix))
 
     def __len__(self):
-        return len(list(self.__iter__()))
+        return self._len
 
     def copy(self):
         """make a copy of the prefix tree. Note that, unlike builtins, this is
@@ -155,11 +175,14 @@ class Trie(abc.MutableMapping):
         """
         new = type(self)()
         new.root = copy.deepcopy(self.root)
+        new._len = self._len
         return new
 
-    def dict(self):
-        """return a dictionary from the prefix tree"""
-        return dict(self.items())
+    def dict(self, prefix=None):
+        """return a dictionary from the prefix tree. optional `prefix` argument
+        limits results to keys beginning with the given prefix.
+        """
+        return dict(self.items(prefix))
 
     def getpart(self, key):
         """takes a key and matches as much of it as possible. returns a tuple
@@ -197,9 +220,11 @@ class Trie(abc.MutableMapping):
         return results
 
 
-class SuffixTree(Trie):
-    """Subclass of Trie that takes it from the back."""
-    template = 'SuffixTree(%r)'
+class BackTrie(Trie):
+    """Subclass of Trie that takes it from the back. I used to call this a
+    suffix tree, but I've since learned that that is incorrect.
+    """
+    template = 'BackTrie(%r)'
 
     def __setitem__(self, key, value):
         super().__setitem__(key[::-1], value)
@@ -214,8 +239,8 @@ class SuffixTree(Trie):
         value, remainder = super().getpart(key[::-1])
         return value, remainder[::-1]
 
-    def items(self):
-        return ((k[::-1], v) for k, v in super().items())
+    def items(self, key=None):
+        return ((k[::-1], v) for k, v in super().items(key))
 
     def getallparts(self, key):
         return super().getallparts(key)[::-1]

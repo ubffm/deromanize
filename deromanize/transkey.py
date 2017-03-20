@@ -26,7 +26,7 @@ import functools
 import operator
 import json
 import os
-from .trees import Trie, SuffixTree
+from .trees import Trie, BackTrie
 
 
 class Replacement:
@@ -192,7 +192,7 @@ class ReplacementTrie(Trie):
                 for k, v in self.items()}
 
     def child(self, *dicts, weight=None, suffix=False):
-        child = ReplacementSuffixTree() if suffix else ReplacementTrie()
+        child = ReplacementBackTrie() if suffix else ReplacementTrie()
         if type(self) is type(child):
             child = self.copy()
         else:
@@ -212,8 +212,8 @@ class ReplacementTrie(Trie):
         return ReplacementList(key, value, weight)
 
 
-class ReplacementSuffixTree(ReplacementTrie, SuffixTree):
-    template = 'ReplacementSuffixTree(%r)'
+class ReplacementBackTrie(ReplacementTrie, BackTrie):
+    template = 'ReplacementBackTrie(%r)'
 
 
 class CharSets:
@@ -288,7 +288,7 @@ class TransKey:
             self.broken_clusters = profile.get('broken_clusters')
             for k, v in profile['keys'].items():
                 if self.profile['keys'][k].get('suffix'):
-                    trie = ReplacementSuffixTree
+                    trie = ReplacementBackTrie
                 else:
                     trie = ReplacementTrie
                 self[k] = trie(v)
