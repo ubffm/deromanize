@@ -33,7 +33,7 @@ def decode(key, word):
     # middle.
     end, remaider = key['end'].getpart(newword)
     front, remaider = key['front'].getpart(remaider)
-    middle = deromanize.add_reps(key['base'].getallparts(remaider))
+    middle = key['base'].getallparts(remaider).add()
     hebword = front + middle + end
     hebword.sort()
     return hebword

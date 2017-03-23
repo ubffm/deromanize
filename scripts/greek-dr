@@ -16,10 +16,10 @@ def decode(key, word):
     except KeyError:
         return end
     try:
-        middle = key['base'].getallparts(remainder)
+        middle = key['base'].getallparts(remainder).add()
     except KeyError:
         return front + end
-    return front + deromanize.add_reps(middle) + end
+    return front + middle + end
 
 
 def main():

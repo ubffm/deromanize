@@ -17,7 +17,7 @@
 # If you do not alter this notice, a recipient may use your version of
 # this file under either the MPL or the EUPL.
 """
-Classes, mostly for implementing the TransKey type.
+Classes for implementing the TransKey type.
 """
 import copy
 from collections import abc
@@ -52,6 +52,9 @@ class Replacement:
 
 
 class StatRep(Replacement):
+    """class for representing replacement weights that look like statistics
+    because Kai likes multiplication.
+    """
     def __add__(self, other):
         return StatRep(self.weight * other.weight,
                        self.value + other.value)
@@ -59,7 +62,7 @@ class StatRep(Replacement):
 
 class ReplacementList(abc.MutableSequence):
     """a list of Replacements with a .key attribute containing the key to which
-    they belong
+    they belong.
     """
     reptype = Replacement
 
@@ -70,13 +73,14 @@ class ReplacementList(abc.MutableSequence):
             self.extend(values, weight)
 
     @staticmethod
-    def _prep_value(i, value):
+    def _prep_value(weight, value):
+        """Make sure any input is converted into a Replacement."""
         if isinstance(value, Replacement):
             return value
         elif isinstance(value, (tuple, list)) and len(value) == 2:
             return Replacement(*value)
         elif isinstance(value, str):
-            return Replacement(i, value)
+            return Replacement(weight, value)
         else:
             raise TypeError(
                 '%s is not supported for insertion in ReplacementList'
@@ -98,6 +102,7 @@ class ReplacementList(abc.MutableSequence):
         self.data.insert(i, self._prep_value(i, value))
 
     def extend(self, iterable, weight=None):
+        """incrementally increase weight while extending"""
         if weight is None:
             super().extend(iterable)
         else:
@@ -107,6 +112,7 @@ class ReplacementList(abc.MutableSequence):
                 self.data.append(rep)
 
     def add_weight(self, weight):
+        """add additional weight to each item in the list"""
         for i in self:
             i.weight += weight
 
@@ -135,9 +141,11 @@ class ReplacementList(abc.MutableSequence):
         return string
 
     def sort(self, reverse=False, key=lambda rep: rep.weight, *args, **kwargs):
+        """sort items by weight"""
         self.data.sort(key=key, reverse=reverse, *args, **kwargs)
 
     def prune(self, reverse=False):
+        """sort items and prune repeats"""
         self.sort(reverse)
         repeats = []
         seen = set()
@@ -149,7 +157,16 @@ class ReplacementList(abc.MutableSequence):
             self.data.remove(i)
 
 
+class RepListList(list):
+    """I'm to lazy to type deromanize.add_reps"""
+    def add(self):
+        return add_reps(self)
+
+
 class ReplacementTrie(Trie):
+    """a tree the only contains ReplacementLists. used for tokenizing Romanized
+    strings.
+    """
     template = 'ReplacementTrie(%r)'
 
     def __repr__(self):
@@ -158,40 +175,30 @@ class ReplacementTrie(Trie):
     def __setitem__(self, key, value, weight=None):
         super().__setitem__(key, self._ensurereplist(key, value, weight))
 
-    def update(self, dictionary, weight=None, parent=None):
-        if parent:
-            for k, v in dictionary.items():
-                if any(i in k for i in parent.char_sets):
-                    generated = parent.patterngen(
-                        k, v, broken_clusters=parent.broken_clusters)
-                    self.update(generated, weight)
-                else:
-                    self.__setitem__(k, v, weight)
-        else:
-            for k, v in dictionary.items():
-                self.__setitem__(k, v, weight)
+    def getallparts(self, key):
+        return RepListList(super().getallparts(key))
+
+    def update(self, dictionary, weight=None):
+        for k, v in dictionary.items():
+            self.__setitem__(k, v, weight)
 
     def extend(self, dictionary, weight=None, parent=None):
         """For each item in in the input dictionary, the coresponding
         replacement list in the trie is extended with the given replacemnts.
         """
-        if parent:
-            for k, v in dictionary.items():
-                if any(i in k for i in parent.char_sets):
-                    generated = parent.patterngen(
-                        k, v, broken_clusters=parent.broken_clusters)
-                    self.extend(generated, weight)
-                else:
-                    self.setdefault(k, ReplacementList(k)).extend(v, weight)
-        else:
-            for k, v in dictionary.items():
-                self.setdefault(k, ReplacementList(k)).extend(v, weight)
+        for k, v in dictionary.items():
+            self.setdefault(k, ReplacementList(k)).extend(v, weight)
 
     def simplify(self):
+        """reduces the tree to a dictionary and all special types to JSON
+        serializable types. A new ReplacementTrie can be instantiated from this
+        resulting object.
+        """
         return {k: [(i.weight, i.value) for i in v.data]
                 for k, v in self.items()}
 
     def child(self, *dicts, weight=None, suffix=False):
+        """creates a new tree containing the same elements as this one"""
         child = ReplacementBackTrie() if suffix else ReplacementTrie()
         if type(self) is type(child):
             child = self.copy()
@@ -203,6 +210,7 @@ class ReplacementTrie(Trie):
 
     @staticmethod
     def _ensurereplist(key, value, weight=None):
+        """make sure all input values are converted to ReplacementList"""
         if isinstance(value, ReplacementList):
             if weight is not None:
                 value.add_weight(weight)
@@ -317,6 +325,9 @@ class TransKey:
         return self.keys[key]
 
     def normalize_profile(self):
+        """There are shortcuts for leaving implied keys out of the profile
+        definitions. This normalizes out those shortcuts.
+        """
         keys = self.profile['keys']
         for k, v in keys.items():
             if isinstance(v, (list, str)):
@@ -354,11 +365,24 @@ class TransKey:
 
     def extend(self, key_name, *profile_groups, weight=None):
         for g in profile_groups:
-            self[key_name].extend(self.profile[g], weight)
+            for k, v in self.profile[g].items():
+                if any(i in k for i in self.char_sets):
+                    generated = self.patterngen(
+                        k, v, broken_clusters=self.broken_clusters)
+                    self[key_name].extend(generated, weight)
+                else:
+                    self[key_name].setdefault(
+                        k, ReplacementList(k)).extend(v, weight)
 
     def update(self, key_name, *profile_groups, weight=None):
         for g in profile_groups:
-            self[key_name].update(self.profile[g], weight)
+            for k, v in self.profile[g].items():
+                if any(i in k for i in self.char_sets):
+                    generated = self.patterngen(
+                        k, v, broken_clusters=self.broken_clusters)
+                    self[key_name].update(generated, weight)
+                else:
+                    self[key_name].__setitem__(k, v, weight)
 
     def definecharset(self, char, character_set, parent=None):
         parent = self.get_base(parent)

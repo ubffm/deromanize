@@ -16,16 +16,26 @@
 #
 # If you do not alter this notice, a recipient may use your version of
 # this file under either the MPL or the EUPL.
+"""Prefix trees with dictionary-like interfaces"""
 import copy
 from collections import abc
 
 
 class Empty:
+    """Just a silly class that doesn't do anything but hold empty
+    places. That's probably None's job, but, eh, since None is a valid value
+    that could be in a dictionary, decided to whip up something else.
+    """
     def __repr__(self):
         return "empty"
 
     def __eq__(self, other):
         return isinstance(other, Empty)
+
+    def __copy__(self, *args):
+        return self
+
+    __deepcopy__ = __copy__
 
 
 empty = Empty()
@@ -64,7 +74,7 @@ class Trie(abc.MutableMapping):
         node = self.root
         for char in key:
             node = node[1].setdefault(char, [empty, {}])
-        if node[0] == empty:
+        if node[0] is empty:
             self._len += 1
         node[0] = value
 
@@ -98,20 +108,20 @@ class Trie(abc.MutableMapping):
 
     def __getitem__(self, key):
         node = self._getnode(key)
-        if node[0] == empty:
+        if node[0] is empty:
             raise KeyError(key)
         return node[0]
 
     def __delitem__(self, key):
         node, stack = self.getstack(key)
-        if node[0] == empty:
+        if node[0] is empty:
             raise KeyError(key)
         self._len -= 1
         node[0] = empty
 
         for parent, key in reversed(stack):
             node = parent[1][key]
-            if node[0] == empty and not node[1]:
+            if node[0] is empty and not node[1]:
                 del parent[1][key]
             else:
                 break
@@ -143,9 +153,12 @@ class Trie(abc.MutableMapping):
         return self._itemize(topnode, keypart)
 
     def _itemize(self, topnode, keypart=''):
+        """traverse the tree recursively and get spit out the non-empty nodes
+        along the way.
+        """
         for key, node in topnode[1].items():
             newkeypart = keypart + key
-            if node[0] != empty:
+            if node[0] is not empty:
                 yield (newkeypart, node[0])
             yield from self._itemize(node, newkeypart)
 
@@ -195,15 +208,15 @@ class Trie(abc.MutableMapping):
             try:
                 node = node[1][char]
             except KeyError:
-                if value == empty:
+                if value is empty:
                     raise
                 else:
                     return value, remainder
 
-            if node[0] != empty:
+            if node[0] is not empty:
                 value, remainder = node[0], key[i+1:]
 
-        if value == empty:
+        if value is empty:
             raise KeyError(key)
         else:
             return value, remainder
