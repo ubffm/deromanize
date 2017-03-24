@@ -198,7 +198,9 @@ class ReplacementTrie(Trie):
                 for k, v in self.items()}
 
     def child(self, *dicts, weight=None, suffix=False):
-        """creates a new tree containing the same elements as this one"""
+        """creates a new tree containing starting from the elements in the
+        parent, but updated from the supplied dicts.
+        """
         child = ReplacementBackTrie() if suffix else ReplacementTrie()
         if type(self) is type(child):
             child = self.copy()
@@ -221,10 +223,16 @@ class ReplacementTrie(Trie):
 
 
 class ReplacementBackTrie(ReplacementTrie, BackTrie):
+    """same as ReplacementTrie, but it will begin analysing a string from the
+    end, so it can be used for identifying suffixes.
+    """
     template = 'ReplacementBackTrie(%r)'
 
 
 class CharSets:
+    """A Container for character sets which can be used to generate replacement
+    lists based on patterns.
+    """
     def __init__(self, char_sets, key):
         self.unparsed = Trie(char_sets)
         self.parsed = Trie()
@@ -247,6 +255,7 @@ class CharSets:
         return iter(self.unparsed)
 
     def getpart(self, key):
+        """wrapper on getpart from the internal Trie"""
         try:
             return self.parsed.getpart(key)
         except KeyError:
@@ -256,6 +265,12 @@ class CharSets:
         return self.parsed.getpart(key)
 
     def parse_pattern(self, key):
+        """tokenizes a pattern-based replacement definition and returns a
+        tuple. the first item in the tuple is a list containg all the parts to
+        be used in the replacement. the second item is a dictionary where each
+        the shortcut for each capture group is the key, and the value is the
+        index in the results list.
+        """
         results = []
         remainder = key
         counter = 0
@@ -272,6 +287,9 @@ class CharSets:
         return results, index
 
     def parse(self, key):
+        # the charset definitions aren't parsed until they are actually
+        # required, to ensure all the required keys have been built, so this
+        # function is used throughout the class to parse charsets as needed.
         def_ = self.unparsed[key]
         try:
             chars = self.key.profile[def_]
@@ -336,6 +354,7 @@ class TransKey:
                 keys[k]['groups'] = [keys[k]['groups']]
 
     def keygen(self, keyname):
+        """generates a key from the `keys` section of a profile."""
         info = self.profile['keys'][keyname]
         suffix = info.get('suffix')
         parent = info.get(
@@ -358,12 +377,18 @@ class TransKey:
 
     def new(self, key_name, *profile_groups,
             parent=None, weight=None, suffix=False):
+        """create a new key based on `parent` key that is updated from the
+        specified `profile_groups`.
+        """
         parent = self.get_base(parent)
         dicts = (self.profile[g] for g in profile_groups)
         self[key_name] = parent.child(*dicts, weight=weight, suffix=suffix)
         return self[key_name]
 
     def extend(self, key_name, *profile_groups, weight=None):
+        """extend a key with the specified profile groups. Keys containing
+        char_set aliases will be expanded.
+        """
         for g in profile_groups:
             for k, v in self.profile[g].items():
                 if any(i in k for i in self.char_sets):
@@ -375,6 +400,9 @@ class TransKey:
                         k, ReplacementList(k)).extend(v, weight)
 
     def update(self, key_name, *profile_groups, weight=None):
+        """update a key with the specified profile groups. Keys containing
+        char_set aliases will be expanded.
+        """
         for g in profile_groups:
             for k, v in self.profile[g].items():
                 if any(i in k for i in self.char_sets):
@@ -416,6 +444,7 @@ class TransKey:
 
     @staticmethod
     def _parse_rep(rep):
+        """parse the replacement pattern"""
         results = []
         remainder = rep
         while remainder:
@@ -485,7 +514,7 @@ class TransKey:
                 remainder)
 
     def get_all_stat_parts(self, key, string):
-        results = []
+        results = RepListList()
         remainder = string
         while remainder:
             value, remainder = self.get_stat_part(key, remainder)
@@ -546,14 +575,14 @@ def cached_keys(loader, profile_file, cache_file, base_key='base'):
         return key
 
 
+# Just another Trie for parsing regex-like capture group syntax for
+# substitutions.
 esc_numbs = Trie()
 for i in range(1, 10):
     s = str(i)
     esc_numbs['\\'+s] = i
     esc_numbs['\\\\'+s] = '\\' + s
-
 del s, i
-
 
 if __name__ == '__main__':
     import yaml
