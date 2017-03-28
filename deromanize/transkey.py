@@ -255,7 +255,9 @@ class CharSets:
         return iter(self.unparsed)
 
     def getpart(self, key):
-        """wrapper on getpart from the internal Trie"""
+        """wrapper on getpart from the internal Trie, used to tokenize pattern
+        strings by CharSets.parse_pattern()
+        """
         try:
             return self.parsed.getpart(key)
         except KeyError:
@@ -413,6 +415,7 @@ class TransKey:
                     self[key_name].__setitem__(k, v, weight)
 
     def definecharset(self, char, character_set, parent=None):
+        """legacy way to define character sets. it might even still work!"""
         parent = self.get_base(parent)
         self.char_sets[char] = [parent[c] for c in character_set]
 

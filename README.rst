@@ -5,16 +5,9 @@ back into original scripts.
 
 .. contents::
 
-``TransKey``
-------------
-TransKey is a class to help parse a profile which describes a
-Romanization standard. The programmer still must define how the contents
-of the profile data will be used, but the TransKey is a helpful
-mechanism for simplifying this process.
-
 Basic usage
 -----------
-The first step working with ``deromanize`` is defining your decoding
+The first step in working with ``deromanize`` is defining your decoding
 keys in data through a profile.
 
 A profile has fairly simple format. It is a dictionary which contains
@@ -203,9 +196,9 @@ is the same as...
      - infrequent: 10
 
 The other shortcut is that ``base`` is actually a special key name.  If
-it is defined, all other character groups will inherit default from it
-as a prototype character group which you can selectively override and
-extend with other character groups to build all the groups you need.
+it is defined, all other character groups will inherit the default
+character set from it as a prototype which you can selectively override
+and extend with other character groups to build all the groups you need.
 
 Therefore:
 
@@ -234,14 +227,14 @@ happens to be spelled ``null`` in JSON and YAML).
 
   front:
     base: null
-    groups: some groups here
+    groups: (some groups here)
 
 You can, of course, use any other key as your base and get into some
 rather sophisticated composition if you wish. Just don't create a
 dependency cycle or you'll end up in a never-ending loop. (Well, I guess
 it will end when Python hits its recursion limit.)
 
-One last thing yo may notice that's odd in this section is that one of
+One last thing you may notice that's odd in this section is that one of
 the groups in ``base`` is ``infrequent: 10``. This is a way to
 manipulate the sort order of results. It might be a good time to explain
 that in a little more detail.
@@ -358,251 +351,7 @@ Any replacement that is a list or tuple of two beginning with an integer
 will use that integer as its weight assignment. In this way, one can
 have very direct control over how results are sorted.
 
-Creating a TransKey Instance
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code:: python
-
-   # TransKeys only deal with python objects, so we have to unmarshal
-   # from our serialization format of choice. I chose YAML, due to
-   # brain damage.
-   >>> import deromanize
-   >>> import yaml
-   >>> PROFILE = yaml.safe_load(open('./data/new.yml'))
-   >>> key = deromanize.TransKey(PROFILE, 'base', 'consonants', 'vowels')
-
-So what just happened there?
-
-The first argument of the ``TransKey()`` constructor is the profile file
-from which all the keys will be generated. Everything after that gets
-passed to the ``.groups2key()`` method and becomes the default
-"``base_key``" for the instance. The argument ``'base'`` tells the
-TransKey instance that this is the name of the key, the rest of the
-arguments tell which groups from the profile should be added to the
-key.
-
-I forgot there were two other groups I wanted to add to the ``'base'``
-key, ``other`` and ``clusters``, so I'll do that now.
-
-.. code:: python
-
-  >>> key.groups2key('base', 'other', 'clusters')
-
-Again, we specify which key we want to add to, and then the groups from
-the profile to be added.
-
-Using Keys
-~~~~~~~~~~
-
-Now, let's try to decode some Romanized Hebrew:
-
-.. code:: python
-
-  >>> key['base'].getallparts('shalom')
-  [ReplacementList('sh', [Replacement(0, 'ש')]), ReplacementList('a',
-  [Replacement(0, '')]), ReplacementList('l', [Replacement(0, 'ל')]),
-  ReplacementList('o', [Replacement(0, 'ו'), Replacement(1, '')]),
-  ReplacementList('m', [Replacement(0, 'מ')])]
-
-OK, What is all that crap? I'll tell you in a minute. The first thing
-we'll do is show you how to make sense of it.
-
-.. code:: python
-
-  >>> foo = key['base'].getallparts('shalom')
-  >>> bar = deromanize.add_reps(foo)
-  >>> print(bar)
-  shalom:
-   0 שלומ
-   1 שלמ
-
-So basically, we get the key, and we get all possible original
-reconstructions with a *weight* attached. If you look at the ``vowels``
-group in the profile, you'll see that ``o`` can be de-Romanized as
-either ``ו`` (Hebrew letter *vav*) or the empty string, but the version
-with *vav* is to be preferred. This is reflected in the ``__str__`` of
-whatever kind of weird object we just got back.
-
-Let's back it up one notch, before we added all the replacements
-together:
-
-.. code:: python
-
-  >>> for i in foo:
-  ...     print(i)
-  ...
-  sh:
-   0 ש
-  a:
-   0 
-  l:
-   0 ל
-  o:
-   0 ו
-   1 
-  m:
-   0 מ
-
-So we get a list of possible replacements and weights for each
-Romanization symbol we put in. In this case, most of the items only have
-one possible, value, but the ``o`` has two. Each Romanized character
-here represents a ``ReplacementList`` instance.
-
-.. code:: python
-
-  >>> foo[3]
-  ReplacementList('o', [Replacement(0, 'ו'), Replacement(1, '')])
-
-So, each replacement list has a ``.key`` attribute which marks the
-Romanization symbol it treats, and it contains a list of ``Replacement``
-instances (now you see how creatively these things are named). Each
-replacement has a ``.weight`` attribute and a ``value`` attribute.
-
-Now, when you add two ReplacementLists together, you get the keys of
-each concatenated, and all the possible combinations of the
-replacements with their weights being combined. Thus:
-
-.. code:: python
-
-  >>> print(key['base']['y'])
-  y:
-   0 יי
-   1 י
-  >>> print(key['base']['o'])
-  o:
-   0 ו
-   1 
-  >>> print(key['base']['y'] + key['base']['o'])
-  yo:
-   0 ייו
-   1 יי
-   1 יו
-   2 י
-
-Indeed, ``deromanize.add_reps(reps)`` is just a shortcut for
-``functools.reduce(operator.add, reps)`` with error checking. ``sum()``
-would have worked just as well, but it's only for numeric types. Results
-are not automatically sorted, but ``ReplacementList`` has a sort method
-which will order the results by weight.
-
-Creating a New Key from an Existing Key (and Suffixes)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Returning to the example of *shalom*, we see that the two de-Romanized
-options are שלומ and שלמ, neither of which is actually correct. Those
-familiar with Hebrew will know that certain letters have special forms
-at the ends of words.
-
-The ``'base'`` key we've created can't deal with those. However, we can
-create a new key:
-
-.. code:: python
-
-  >>> key.basekey2new('endings', 'final', suffix=True)
-
-Creating a new key based on an existing key is similar to creating a key
-from scratch. You specify the name of the new key and any groups you
-want to add to it from the configuration file. These new items will
-overwrite any old values. By default, it uses the group that you created
-at instantiation time, but you can specify another base with the
-``base_key`` keyword argument. Setting ``suffix`` to ``True`` means that
-the key will start decoding a string from the back instead of the front,
-as we see:
-
-.. code:: python
-
-  >>> end, remainder = key['endings'].getpart('shalom')
-  >>> remainder, end
-  ('shalo', ReplacementList('m', [Replacement(0, 'ם')]))
-
-So far, we have seen the ``.getallparts`` method used with the
-``'base'`` key, which returns a list of transliteration symbols and
-their possible replacements. ``.getpart`` is the singular to this
-plural. It gets the replacement for the first transliteration symbol it
-sees and returns the remainder of the original string. If ``suffix`` was
-specified when the group was created the "first part" of the string it
-sees is the end. From here, we can get the rest of the parts from the
-``'base'`` key and add up all the results:
-
-.. code:: python
-
-  >>> beginning = key['base'].getallparts(remainder)
-  >>> print(deromanize.add_reps(beginning) + end)
-  shalom:
-   0 שלום
-   1 שלם
-
-Perfect!
-
-``.processor`` decorator
-~~~~~~~~~~~~~~~~~~~~~~~~
-It's a bit boring to type all this, so let's turn it into a function.
-``TransKey`` instances come with a decorator.
-
-.. code:: python
-
-  >>> @key.processor
-  ... def decode(key, word):
-  ...     end, remainder = key['endings'].getpart(word)
-  ...     beginning = key['base'].getallparts(remainder)
-  ...     return deromanize.add_reps(beginning) + end
-  ...
-  >>> print(decode('ḥayim'))
-  ḥayim:
-   0 חיים
-   1 חים
-
-``.processor`` just automatically includes the key when you call the
-function and passes any other \*args or \*\*kwargs. It's not really a
-big deal.
-
-Weighted Replacements
-~~~~~~~~~~~~~~~~~~~~~
-Let's look at another example:
-
-.. code:: python
-
-  >>> print(decode('rosh'))
-  rosh:
-   0 רוש
-   1 רש
-
-Oops! Turns out none of these are right. I forgot that, every now and
-then, the *o* sound in Hebrew can be represented with א, as it is in
-*rosh*. However, I don't want that to be the first (or even second)
-choice in most cases. I have this replacement defined in the group
-``infrequent``, so lets add it:
-
-.. code:: python
-
-  >>> key.groups2key('base', 'infrequent', weight=15)
-  >>> print(decode('rosh'))
-  rosh:
-   0 רוש
-   1 רש
-  15 ראש
-
-Better! Now, this unlikely Replacement appears, but it is weighted
-heavily, so such variations will usually be at the bottom of the
-list.
-
-*rishon* is a similar kind of word, so let's see what happens:
-
-.. code:: python
-
-  >>> print(decode('rishon'))
-  rishon:
-   0 רישון
-   1 רישן
-  15 רישאן
-  15 ראשון
-  16 ראשן
-  30 ראשאן
-
-In this case, the fourth option is the correct result. The ``weight``
-argument allows you to account for rare normalizations or common
-mistakes without letting them be more highly prioritized than more
-common variants.
-
 Pattern-Based Replacement Generation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-... coming soon...
+``deromanize`` profiles also allow the user to generate large numbers of
+replacements from pattern-based definitions.
