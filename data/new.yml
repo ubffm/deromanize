@@ -17,7 +17,7 @@ keys:
 char_sets:
   C: consonants
   F:
-    base: front
+    key: front
     chars: consonants
 
 consonants:
@@ -50,9 +50,9 @@ consonants:
 
 vowels:
   i: י
-  e: ['', י]
+  e: ['', [3, י]]
   a: ''
-  o: ו
+  o: [ו, [5, '']]
   u: ו
 
 other:
@@ -91,6 +91,7 @@ final:
   i: י
   i: [י, יא]
   o: [ו, וא, א]
+  oh: [ה, וה]
   u: ו
   im: ים
   enu: ינו

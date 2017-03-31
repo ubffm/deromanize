@@ -250,7 +250,8 @@ item at runtime.
 As the items are added, they are assigned a ``weight``. In the common
 case, that weight is simply the index number in the list.
 
-We have a line like this in our configuration file:
+Let's go back and pretend that are working with the simple profile at
+the top of this README. We have a line like this in the file:
 
 .. code:: yaml
 
@@ -296,10 +297,11 @@ After all the variations have been generated, the resulting
 ``ReplacementList`` can be sorted with its ``.sort()`` method according
 to these weights, from least to greatest.
 
-However, certain normalizations may appear infrequently, so that one
-wants to try everything else before resorting for that. These may be
-rare cases as is the case with my ``infrequent`` character group, or it
-may be a way to hedge bets against human error in input data.
+However (coming back to the real config file), certain normalizations
+may appear infrequently, so that one wants to try everything else
+before resorting for that. These may be rare cases as is the case with
+my ``infrequent`` character group, or it may be a way to hedge bets
+against human error in input data.
 
 What ``infrequent: 10`` does is tell the ``TransKey`` instance to add
 ``10`` to the index number of each Replacement to generate its
@@ -313,23 +315,24 @@ to the bottom of the list.
   >>> print(add_reps( key['base'].getallparts('shalom')))
   shalom:
    0 שלומ
-   1 שלמ
+   5 שלמ
   10 שלאמ
   10 שאלומ
-  11 שאלמ
+  15 שאלמ
   20 שאלאמ
 
 A couple of colleagues pointed out to me that this weighting system
-seems very arbitrary in and it should be based on values between 0 and 1
-for a more scientific and statistical approach. However, the purpose of
-the weighting system is simply to allow the person defining to have a
-greater control over how results are sorted and have nothing to do with
-science or statistics. If you want to sink items in a particular group
-lower in the final sort order, stick a big fat number besides the
-replacement value. This is the only meaning the numbers have. Fear not!
-They only print to help you debug. There are some tricky methods you can
-use to convert the index-generated weights into something that looks
-statistical currently in the skunk works.
+seems very arbitrary in and it should be based on values between 0 and
+1 for a more scientific and statistical approach. However, the purpose
+of the weighting system is simply to allow the person defining to have
+a greater control over how results are sorted and have nothing to do
+with science or statistics. If you want to sink items in a particular
+group lower in the final sort order, stick a big fat number besides
+the replacement value. This is the only meaning the numbers have. Fear
+not!  They only print to help you debug and for refinement of the
+sorting. There are some tricky methods you can use to convert the
+index-generated weights into something that looks statistical
+currently in the skunk works.
 
 Also note that weights can arbitrary be added to any replacement
 directly when it is defined. We could get a similar result for the word
@@ -351,7 +354,60 @@ Any replacement that is a list or tuple of two beginning with an integer
 will use that integer as its weight assignment. In this way, one can
 have very direct control over how results are sorted.
 
+This is also what is done for the case when ``o`` should be replaced
+with the empty string. It is manually weighted at ``5``.
+
 Pattern-Based Replacement Generation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-``deromanize`` profiles also allow the user to generate large numbers of
-replacements from pattern-based definitions.
+
+``deromanize`` profiles also allow the user to generate large numbers
+of replacements from pattern-based definitions. Patterns rely on the
+use of special characters that will generate sets of characters
+defined elsewhere in the profile.
+
+This somewhat analogous to ranges of characters like ``\w`` or ``\s``
+in regex. However, unlike regex, which characters will be treated as
+special are not yet defined (nor are there values). To create these
+character sets and their aliases, the ``char_sets`` group must be
+defined in the profile.
+
+.. code:: yaml
+
+ char_sets:
+   C:
+     key: base 
+     chars: consonants
+   F:
+     key: front
+     chars: consonants
+
+What this says is that ``C`` will be an alias for all the characters
+defined in the group ``consonants`` and replacements will be drawn
+from the ``base`` key. Likewise ``F`` will stand for the same
+character set, ``consonants``, but replacements will be drawn from the
+key called ``front``. The value of ``chars`` may also be a list of
+literal characters instead of the name of a character group. ``key``,
+however must be a key defined in the ``keys`` group. If no ``base`` is
+defined for the character set alias, it defaults to the base
+key. Likewise, if the value of any character alias is not a dictionary
+(containing at least a ``chars`` value), its value will be assigned to
+for ``chars``, so a shorthand for the above is:
+
+.. code:: yaml
+
+ char_sets:
+   C: consonants
+   F:
+     key: front
+     chars: consonants
+
+Also note that the character aliases themselves (``C`` and ``F``
+above) can be arbitrary length. You should try to chose sequences that
+cannot possibly appear in your transliteration. Capitals have no
+meaning in the standard I've defined, so I use them, but you could
+also use something like ``\c`` and ``\v`` if you needed. Just note
+that there is no mechanism for escaping special characters once
+defined.
+
+When it comes to actually using these in replacement definitions, it
+goes something like this...

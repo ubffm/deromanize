@@ -242,7 +242,7 @@ class CharSets:
         try:
             return self.parsed[key]
         except KeyError:
-            self.parse(key)
+            self.conf_parse(key)
         return self.parsed[key]
 
     def __setitem__(self, key, value):
@@ -263,7 +263,7 @@ class CharSets:
         except KeyError:
             _, remainder = self.unparsed.getpart(key)
             matched = key[:len(key)-len(remainder)]
-            self.parse(matched)
+            self.conf_parse(matched)
         return self.parsed.getpart(key)
 
     def parse_pattern(self, key):
@@ -288,17 +288,20 @@ class CharSets:
             results.append(value)
         return results, index
 
-    def parse(self, key):
+    def conf_parse(self, key):
         # the charset definitions aren't parsed until they are actually
         # required, to ensure all the required keys have been built, so this
         # function is used throughout the class to parse charsets as needed.
         def_ = self.unparsed[key]
-        try:
-            chars = self.key.profile[def_]
-            parent = self.key[self.key.base_key]
-        except (TypeError, KeyError):
+        if not isinstance(def_, dict):
+            def_ = {'chars': def_}
+
+        if isinstance(def_['chars'], str):
             chars = self.key.profile[def_['chars']]
-            parent = self.key.get_base(def_['base'])
+        else:
+            chars = def_['chars']
+
+        parent = self.key.get_base(def_.get('key'))
         self.parsed[key] = [parent[c] for c in chars]
 
 
@@ -364,18 +367,18 @@ class TransKey:
         groups = info.get('groups', [])
         if parent not in self.keys and parent is not None:
             self.keygen(parent)
-        key = self.new(keyname, parent=parent, suffix=suffix)
+        self.new(keyname, parent=parent, suffix=suffix)
         for g in groups:
             if isinstance(g, str):
-                key.update(self.profile[g], parent=self)
+                self.update(keyname, g)
             else:
                 if isinstance(g, dict):
                     g = g.items()
                 else:
                     g = g[::-1]
                 for k, v in g:
-                    key.extend(self.profile[k], weight=v, parent=self)
-        self[keyname] = key
+                    self.extend(keyname, self.profile[k], weight=v)
+        # self[keyname] = key
 
     def new(self, key_name, *profile_groups,
             parent=None, weight=None, suffix=False):
@@ -392,7 +395,9 @@ class TransKey:
         char_set aliases will be expanded.
         """
         for g in profile_groups:
-            for k, v in self.profile[g].items():
+            if isinstance(g, str):
+                g = self.profile[g]
+            for k, v in g.items():
                 if any(i in k for i in self.char_sets):
                     generated = self.patterngen(
                         k, v, broken_clusters=self.broken_clusters)
@@ -406,7 +411,9 @@ class TransKey:
         char_set aliases will be expanded.
         """
         for g in profile_groups:
-            for k, v in self.profile[g].items():
+            if isinstance(g, str):
+                g = self.profile[g]
+            for k, v in g.items():
                 if any(i in k for i in self.char_sets):
                     generated = self.patterngen(
                         k, v, broken_clusters=self.broken_clusters)
@@ -421,8 +428,8 @@ class TransKey:
 
     def patterngen(self, key_pattern, rep_patterns,
                    weight=0, broken_clusters=None):
-        """implement some kind of pattern matching for character classes that
-        generates all possible matches ahead of time.
+        """implement some kind of pattern-based replacement generation for character
+        classes.
         """
         # parse pattern strings
         blocks, pattern_idx = self.char_sets.parse_pattern(key_pattern)
@@ -590,4 +597,4 @@ del s, i
 if __name__ == '__main__':
     import yaml
     prof = yaml.safe_load(open('data/new.yml'))
-    key = TransKey(prof, 'base')
+    key = TransKey(prof)

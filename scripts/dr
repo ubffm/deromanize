@@ -4,10 +4,11 @@ import sys
 import deromanize
 import yaml
 from pathlib import Path
+import cProfile
 
 PROJECT_DIR = Path(deromanize.__file__).parents[1]
 CONFIG_FILE = PROJECT_DIR/'data'/'new.yml'
-CUTOFF = 5
+CUTOFF = 10
 CACHE = Path('.cache')
 
 with CONFIG_FILE.open() as config:
