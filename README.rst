@@ -411,3 +411,39 @@ defined.
 
 When it comes to actually using these in replacement definitions, it
 goes something like this...
+
+.. code:: yaml
+
+  beginning patterns:
+    FiCC: [\1\2\3, \1י\2\3]
+    FoCC: [\1ו\2\3, \1\2\3]
+    FeCC: [\1\2\3]
+
+Each alias character becomes something like a 'capture group' in
+regex, and can be recalled int the replacement string with a
+backslashed number (like regex). The appropriate replacements will be
+generated for all characters in the group.
+
+Please be aware that you can generate a LOT of replacements this way
+(the above groups, with the rest of this config file, generate over
+50,000 new replacements). This can take a few seconds to chug
+through. This time can be cut by more than half by caching the
+generated keys. Below is code from scripts/dr which will handle the
+use of cached keys.
+
+.. code:: python
+
+    PROJECT_DIR = Path(deromanize.__file__).parents[1]
+    CONFIG_FILE = PROJECT_DIR/'data'/'new.yml'
+    CACHE = Path('.cache')
+
+    with CONFIG_FILE.open() as config:
+	key = deromanize.cached_keys(yaml.safe_load, config, cache)
+
+The ``cached_keys`` function take the profile loader function as it's
+first argument (some kind of deserializer), an open, readable file
+object of the profile as the second, and a string of the path or
+pathlib.Path instance pointing to the cache file third. Basically if
+the profile has been modified since the last cache was created, it
+will generate all new keys and dump what it made into the
+cache. Otherwise, it will just load the cache.

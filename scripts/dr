@@ -9,16 +9,12 @@ import cProfile
 PROJECT_DIR = Path(deromanize.__file__).parents[1]
 CONFIG_FILE = PROJECT_DIR/'data'/'new.yml'
 CUTOFF = 10
-CACHE = Path('.cache')
+CACHE_PATH = Path('.cache')
 
 with CONFIG_FILE.open() as config:
-    if not CACHE.exists():
-        with CACHE.open('w') as cache:
-            cache.write('0')
+    key = deromanize.cached_keys(yaml.safe_load, config, CACHE_PATH)
 
-    with CACHE.open() as cache:
-        key = deromanize.cached_keys(yaml.safe_load, config, cache)
-    PROFILE = key.profile
+PROFILE = key.profile
 
 @key.processor
 def decode(key, word):

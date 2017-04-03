@@ -26,6 +26,7 @@ import functools
 import operator
 import json
 import os
+import pathlib
 from .trees import Trie, BackTrie
 
 
@@ -300,8 +301,10 @@ class CharSets:
             chars = self.key.profile[def_['chars']]
         else:
             chars = def_['chars']
-
-        parent = self.key.get_base(def_.get('key'))
+        parent_key = def_.get('key')
+        if parent_key and parent_key not in self.key.keys:
+            self.key.keygen(parent_key)
+        parent = self.key.get_base(parent_key)
         self.parsed[key] = [parent[c] for c in chars]
 
 
@@ -385,7 +388,10 @@ class TransKey:
         """create a new key based on `parent` key that is updated from the
         specified `profile_groups`.
         """
-        parent = self.get_base(parent)
+        if parent is None:
+            parent = ReplacementTrie()
+        else:
+            parent = self.get_base(parent)
         dicts = (self.profile[g] for g in profile_groups)
         self[key_name] = parent.child(*dicts, weight=weight, suffix=suffix)
         return self[key_name]
@@ -567,20 +573,25 @@ def add_reps(reps):
         return get_empty_replist()
 
 
-def cached_keys(loader, profile_file, cache_file, base_key='base'):
-    mtime = os.stat(profile_file.name).st_mtime
+def cached_keys(loader, profile_file, cache_path, base_key='base'):
+    stats = os.stat(profile_file.name)
+    cache_path = pathlib.Path(cache_path)
+    if not cache_path.exists():
+        with cache_path.open('w', encoding='utf8') as cache:
+            cache.write('0')
+    cache_file = cache_path.open(encoding='utf8')
     cached_mtime = float(cache_file.readline())
-    if mtime == cached_mtime:
+    if stats.st_mtime == cached_mtime:
         return TransKey(json.loads(cache_file.readline()),
                         base_key=base_key,
-                        mtime=mtime,
+                        mtime=stats.st_mtime,
                         from_cache=True)
     else:
         cache_file.close()
         key = TransKey(loader(profile_file),
                        base_key=base_key,
-                       mtime=mtime)
-        with open(cache_file.name, 'w') as cache:
+                       mtime=stats.st_mtime)
+        with open(cache_file.name, 'w', encoding='utf8') as cache:
             key.serialize(cache)
         return key
 
