@@ -312,7 +312,7 @@ class TransKey:
     """an object to build up a transliteration key from a config file. (or
     rather, a python dictionary unmarshalled from a config file.)
     """
-    def __init__(self, profile, base_key='base', mtime=None, from_cache=False):
+    def __init__(self, profile, base_key='base', mtime=0, from_cache=False):
         self.mtime = mtime
         self.base_key = base_key
         self.keys = {}
@@ -604,8 +604,3 @@ for i in range(1, 10):
     esc_numbs['\\'+s] = i
     esc_numbs['\\\\'+s] = '\\' + s
 del s, i
-
-if __name__ == '__main__':
-    import yaml
-    prof = yaml.safe_load(open('data/new.yml'))
-    key = TransKey(prof)
