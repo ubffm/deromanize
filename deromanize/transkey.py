@@ -19,7 +19,6 @@
 """
 Classes for implementing the TransKey type.
 """
-import copy
 from collections import abc
 import itertools
 import functools
@@ -30,26 +29,55 @@ import pathlib
 from .trees import Trie, BackTrie
 
 
+class reify:
+    """ Use as a class method decorator.  It operates almost exactly like the
+    Python ``@property`` decorator, but it puts the result of the method it
+    decorates into the instance dict after the first call, effectively
+    replacing the function it decorates with an instance variable.  It is, in
+    Python parlance, a non-data descriptor.
+
+    Stolen from pyramid. http://docs.pylonsproject.org/projects/pyramid/en/latest/api/decorator.html#pyramid.decorator.reify
+    """
+    def __init__(self, wrapped):
+        self.wrapped = wrapped
+        functools.update_wrapper(self, wrapped)
+
+    def __get__(self, inst, objtype=None):
+        if inst is None:
+            return self
+        val = self.wrapped(inst)
+        setattr(inst, self.wrapped.__name__, val)
+        return val
+
+
 class Replacement:
     """a type for holding a replacement and it's weight. A Replacment on its
     own doesn't know what it's replacing. It should be an item in a
     ReplacmentList.
     """
-    def __init__(self, weight: int, value: str):
-        self.weight, self.value = weight, value
+    def __init__(self, weight: int, value, key):
+        self.weight = weight
+        self.value = (value,) if isinstance(value, str) else value
+        self.key = [key] if isinstance(key, str) else key
 
     def __add__(self, other):
         """adding one Replacement to another results in them combining their
         weight and string values.
         """
         return Replacement(self.weight + other.weight,
-                           self.value + other.value)
+                           self.value + other.value,
+                           self.key + other.key)
+
+    @reify
+    def str(self):
+        return ''.join(self.value)
 
     def __repr__(self):
-        return "Replacement({!r}, {!r})".format(self.weight, self.value)
+        return "Replacement({!r}, {!r}, {!r})".format(
+            self.weight, self.str, ''.join(self.key))
 
     def __str__(self):
-        return self.value
+        return self.str
 
 
 class StatRep(Replacement):
@@ -73,15 +101,14 @@ class ReplacementList(abc.MutableSequence):
         if values is not None:
             self.extend(values, weight)
 
-    @staticmethod
-    def _prep_value(weight, value):
+    def _prep_value(self, weight, value):
         """Make sure any input is converted into a Replacement."""
         if isinstance(value, Replacement):
             return value
         elif isinstance(value, (tuple, list)) and len(value) == 2:
-            return Replacement(*value)
+            return Replacement(*value, key=self.key)
         elif isinstance(value, str):
-            return Replacement(weight, value)
+            return Replacement(weight, value, self.key)
         else:
             raise TypeError(
                 '%s is not supported for insertion in ReplacementList'
@@ -98,6 +125,9 @@ class ReplacementList(abc.MutableSequence):
 
     def __len__(self):
         return len(self.data)
+
+    def __copy__(self):
+        return ReplacementList(self.key, self.values.copy(), self.weight)
 
     def insert(self, i, value):
         self.data.insert(i, self._prep_value(i, value))
@@ -132,7 +162,7 @@ class ReplacementList(abc.MutableSequence):
         if not self.data:
             return string + '])'
         for i in self:
-            string += '%r, ' % ((i.weight, i.value),)
+            string += '%r, ' % ((i.weight, i.str),)
         return string[:-2] + '])'
 
     def __str__(self):
@@ -151,9 +181,9 @@ class ReplacementList(abc.MutableSequence):
         repeats = []
         seen = set()
         for i, rep in enumerate(self):
-            if rep.value in seen:
+            if rep.str in seen:
                 repeats.append(i)
-            seen.add(rep.value)
+            seen.add(rep.str)
         for i in repeats[::-1]:
             self.data.remove(i)
 
@@ -183,6 +213,14 @@ class ReplacementTrie(Trie):
         for k, v in dictionary.items():
             self.__setitem__(k, v, weight)
 
+    def add(self, replacementlist):
+        rl = replacementlist
+        self[rl.key] = rl
+
+    def append(self, replacementlist):
+        rl = replacementlist
+        self.setdefault(rl.key, ReplacementList(rl.key)).append(rl)
+
     def extend(self, dictionary, weight=None, parent=None):
         """For each item in in the input dictionary, the coresponding
         replacement list in the trie is extended with the given replacemnts.
@@ -195,20 +233,15 @@ class ReplacementTrie(Trie):
         serializable types. A new ReplacementTrie can be instantiated from this
         resulting object.
         """
-        return {k: [(i.weight, i.value) for i in v.data]
+        return {k: [(i.weight, i.str) for i in v.data]
                 for k, v in self.items()}
 
     def child(self, *dicts, weight=None, suffix=False):
         """creates a new tree containing starting from the elements in the
         parent, but updated from the supplied dicts.
         """
-        child = ReplacementBackTrie() if suffix else ReplacementTrie()
-        if type(self) is type(child):
-            child = self.copy()
-        else:
-            child.update(copy.deepcopy(self.dict()))
-        for d in dicts:
-            child.update(d, weight)
+        tree = ReplacementBackTrie if suffix else ReplacementTrie
+        child = tree(self.dict().copy())
         return child
 
     @staticmethod
@@ -489,14 +522,14 @@ class TransKey:
         oldparts = []
         for p in keyparts:
             try:
-                oldparts.append(p.key)
+                oldparts.extend(p.key)
             except AttributeError:
                 oldparts.append(p)
         newparts = []
         for i, part in enumerate(oldparts[:-1]):
             nextpart = oldparts[i+1]
             try:
-                newparts.append(broken_clusters[part + nextpart])
+                newparts.append(broken_clusters[part[-1] + nextpart[0]])
                 oldparts[i+1] = ''
             except KeyError:
                 newparts.append(part)
@@ -562,7 +595,7 @@ class TransKey:
 
 
 def get_empty_replist():
-    return ReplacementList('', [Replacement(0, '')])
+    return ReplacementList('', [Replacement(0, '', '')])
 
 
 def add_reps(reps):
