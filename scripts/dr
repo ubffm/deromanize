@@ -10,11 +10,13 @@ PROJECT_DIR = Path(deromanize.__file__).parents[1]
 CONFIG_FILE = PROJECT_DIR/'data'/'new.yml'
 CUTOFF = 10
 CACHE_PATH = Path('.cache')
+PROFILE = yaml.safe_load(CONFIG_FILE.open())
+key = deromanize.TransKey(PROFILE)
 
-with CONFIG_FILE.open() as config:
-    key = deromanize.cached_keys(yaml.safe_load, config, CACHE_PATH)
+# with CONFIG_FILE.open() as config:
+#     key = deromanize.cached_keys(yaml.safe_load, config, CACHE_PATH)
 
-PROFILE = key.profile
+# PROFILE = key.profile
 
 @key.processor
 def decode(key, word):
