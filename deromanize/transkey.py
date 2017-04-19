@@ -30,26 +30,63 @@ import pathlib
 from .trees import Trie, BackTrie
 
 
+class reify:
+    """ Use as a class method decorator.  It operates almost exactly like the
+    Python ``@property`` decorator, but it puts the result of the method it
+    decorates into the instance dict after the first call, effectively
+    replacing the function it decorates with an instance variable.  It is, in
+    Python parlance, a non-data descriptor.
+
+    Stolen from pyramid. http://docs.pylonsproject.org/projects/pyramid/en/latest/api/decorator.html#pyramid.decorator.reify
+    """
+    def __init__(self, wrapped):
+        self.wrapped = wrapped
+        functools.update_wrapper(self, wrapped)
+
+    def __get__(self, inst, objtype=None):
+        if inst is None:
+            return self
+        val = self.wrapped(inst)
+        setattr(inst, self.wrapped.__name__, val)
+        return val
+
+
 class Replacement:
     """a type for holding a replacement and it's weight. A Replacment on its
     own doesn't know what it's replacing. It should be an item in a
     ReplacmentList.
     """
-    def __init__(self, weight: int, value: str):
-        self.weight, self.value = weight, value
+    def __init__(self, weight: int, value):
+        self.valuetree = (value,) if isinstance(value, str) else value
+        self.weight = weight
 
     def __add__(self, other):
         """adding one Replacement to another results in them combining their
         weight and string values.
         """
         return Replacement(self.weight + other.weight,
-                           self.value + other.value)
+                           (self, other))
 
     def __repr__(self):
-        return "Replacement({!r}, {!r})".format(self.weight, self.value)
+        return "Replacement({!r}, {!r})".format(self.weight, self.str)
 
     def __str__(self):
-        return self.value
+        return self.str
+
+    def _value(self):
+        for val in self.valuetree:
+            if isinstance(val, str):
+                yield val
+            else:
+                yield from val.value
+
+    @reify
+    def value(self):
+        return list(self._value())
+
+    @reify
+    def str(self):
+        return ''.join(self.value)
 
 
 class StatRep(Replacement):
@@ -58,7 +95,7 @@ class StatRep(Replacement):
     """
     def __add__(self, other):
         return StatRep(self.weight * other.weight,
-                       self.value + other.value)
+                       (self.value, other.value))
 
 
 class ReplacementList(abc.MutableSequence):
@@ -132,13 +169,13 @@ class ReplacementList(abc.MutableSequence):
         if not self.data:
             return string + '])'
         for i in self:
-            string += '%r, ' % ((i.weight, i.value),)
+            string += '%r, ' % ((i.weight, i.str),)
         return string[:-2] + '])'
 
     def __str__(self):
         string = self.key + ':'
         for r in self:
-            string += '\n{:2} {}'.format(r.weight, r.value)
+            string += '\n{:2} {}'.format(r.weight, r.str)
         return string
 
     def sort(self, reverse=False, key=lambda rep: rep.weight, *args, **kwargs):
@@ -151,9 +188,9 @@ class ReplacementList(abc.MutableSequence):
         repeats = []
         seen = set()
         for i, rep in enumerate(self):
-            if rep.value in seen:
+            if rep.str in seen:
                 repeats.append(i)
-            seen.add(rep.value)
+            seen.add(rep.str)
         for i in repeats[::-1]:
             self.data.remove(i)
 
