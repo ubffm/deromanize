@@ -169,13 +169,13 @@ class ReplacementList(abc.MutableSequence):
         if not self.data:
             return string + '])'
         for i in self:
-            string += '%r, ' % ((i.weight, i.str),)
+            string += '%r, ' % (i.weight, i)
         return string[:-2] + '])'
 
     def __str__(self):
         string = self.key + ':'
         for r in self:
-            string += '\n{:2} {}'.format(r.weight, r.str)
+            string += '\n{:2} {}'.format(r.weight, r)
         return string
 
     def sort(self, reverse=False, key=lambda rep: rep.weight, *args, **kwargs):
