@@ -82,11 +82,19 @@ class Replacement:
 
     @reify
     def value(self):
-        return list(self._value())
+        return tuple(self._value())
 
     @reify
     def str(self):
         return ''.join(self.value)
+
+    def __deepcopy__(self, memo=None):
+        # new = Replacement(self.weight, self.value)
+        # if 'str' in self.__dict__:
+        #     new.str = self.str
+        # if 'value' in self.__dict__['value']:
+        #     new.value = self.value
+        return self
 
 
 class StatRep(Replacement):
@@ -123,6 +131,21 @@ class ReplacementList(abc.MutableSequence):
             raise TypeError(
                 '%s is not supported for insertion in ReplacementList'
                 % type(value))
+
+    def _value(self):
+        for val in self.valuetree:
+            if isinstance(val, str):
+                yield val
+            else:
+                yield from val.value
+
+    @reify
+    def value(self):
+        return list(self._value())
+
+    @reify
+    def str(self):
+        return ''.join(self.value)
 
     def __setitem__(self, i, value):
         self.data[i] = self._prep_value(i, value)
@@ -169,7 +192,7 @@ class ReplacementList(abc.MutableSequence):
         if not self.data:
             return string + '])'
         for i in self:
-            string += '%r, ' % (i.weight, i)
+            string += '%r, %r' % (i.weight, str(i))
         return string[:-2] + '])'
 
     def __str__(self):
@@ -193,6 +216,11 @@ class ReplacementList(abc.MutableSequence):
             seen.add(rep.str)
         for i in repeats[::-1]:
             self.data.remove(i)
+
+    def __deepcopy__(self, memo=None):
+        new = type(self)(self.key)
+        new.data = self.data.copy()
+        return new
 
 
 class RepListList(list):
@@ -343,6 +371,8 @@ class CharSets:
             self.key.keygen(parent_key)
         parent = self.key.get_base(parent_key)
         self.parsed[key] = [parent[c] for c in chars]
+        print(key)
+        print(self[key])
 
 
 class TransKey:
