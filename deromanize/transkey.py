@@ -232,7 +232,7 @@ class ReplacementTrie(Trie):
         serializable types. A new ReplacementTrie can be instantiated from this
         resulting object.
         """
-        return {k: [(i.weight, i.value) for i in v.data]
+        return {k: [(i.weight, str(i)) for i in v.data]
                 for k, v in self.items()}
 
     def child(self, *dicts, weight=None, suffix=False):
