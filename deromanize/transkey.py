@@ -30,26 +30,71 @@ import pathlib
 from .trees import Trie, BackTrie
 
 
+class reify:
+    """ Use as a class method decorator.  It operates almost exactly like the
+    Python ``@property`` decorator, but it puts the result of the method it
+    decorates into the instance dict after the first call, effectively
+    replacing the function it decorates with an instance variable.  It is, in
+    Python parlance, a non-data descriptor.
+
+    Stolen from pyramid. http://docs.pylonsproject.org/projects/pyramid/en/latest/api/decorator.html#pyramid.decorator.reify
+    """
+    def __init__(self, wrapped):
+        self.wrapped = wrapped
+        functools.update_wrapper(self, wrapped)
+
+    def __get__(self, inst, objtype=None):
+        if inst is None:
+            return self
+        val = self.wrapped(inst)
+        setattr(inst, self.wrapped.__name__, val)
+        return val
+
+
 class Replacement:
     """a type for holding a replacement and it's weight. A Replacment on its
     own doesn't know what it's replacing. It should be an item in a
     ReplacmentList.
     """
-    def __init__(self, weight: int, value: str):
-        self.weight, self.value = weight, value
+    def __init__(self, weight: int, value):
+        self.valuetree = (value,) if isinstance(value, str) else value
+        self.weight = weight
 
     def __add__(self, other):
         """adding one Replacement to another results in them combining their
         weight and string values.
         """
         return Replacement(self.weight + other.weight,
-                           self.value + other.value)
+                           (self, other))
 
     def __repr__(self):
-        return "Replacement({!r}, {!r})".format(self.weight, self.value)
+        return "Replacement({!r}, {!r})".format(self.weight, self.str)
 
     def __str__(self):
-        return self.value
+        return self.str
+
+    def _value(self):
+        for val in self.valuetree:
+            if isinstance(val, str):
+                yield val
+            else:
+                yield from val.value
+
+    @reify
+    def value(self):
+        return tuple(self._value())
+
+    @reify
+    def str(self):
+        return ''.join(self.value)
+
+    def __deepcopy__(self, memo=None):
+        # new = Replacement(self.weight, self.value)
+        # if 'str' in self.__dict__:
+        #     new.str = self.str
+        # if 'value' in self.__dict__['value']:
+        #     new.value = self.value
+        return self
 
 
 class StatRep(Replacement):
@@ -58,7 +103,7 @@ class StatRep(Replacement):
     """
     def __add__(self, other):
         return StatRep(self.weight * other.weight,
-                       self.value + other.value)
+                       (self.value, other.value))
 
 
 class ReplacementList(abc.MutableSequence):
@@ -86,6 +131,21 @@ class ReplacementList(abc.MutableSequence):
             raise TypeError(
                 '%s is not supported for insertion in ReplacementList'
                 % type(value))
+
+    def _value(self):
+        for val in self.valuetree:
+            if isinstance(val, str):
+                yield val
+            else:
+                yield from val.value
+
+    @reify
+    def value(self):
+        return list(self._value())
+
+    @reify
+    def str(self):
+        return ''.join(self.value)
 
     def __setitem__(self, i, value):
         self.data[i] = self._prep_value(i, value)
@@ -132,13 +192,13 @@ class ReplacementList(abc.MutableSequence):
         if not self.data:
             return string + '])'
         for i in self:
-            string += '%r, ' % ((i.weight, i.value),)
+            string += '%r, ' % ((i.weight, str(i)),)
         return string[:-2] + '])'
 
     def __str__(self):
         string = self.key + ':'
         for r in self:
-            string += '\n{:2} {}'.format(r.weight, r.value)
+            string += '\n{:2} {}'.format(r.weight, r)
         return string
 
     def sort(self, reverse=False, key=lambda rep: rep.weight, *args, **kwargs):
@@ -151,11 +211,16 @@ class ReplacementList(abc.MutableSequence):
         repeats = []
         seen = set()
         for i, rep in enumerate(self):
-            if rep.value in seen:
+            if rep.str in seen:
                 repeats.append(i)
-            seen.add(rep.value)
+            seen.add(rep.str)
         for i in repeats[::-1]:
             self.data.remove(i)
+
+    def __deepcopy__(self, memo=None):
+        new = type(self)(self.key)
+        new.data = self.data.copy()
+        return new
 
 
 class RepListList(list):
@@ -195,7 +260,7 @@ class ReplacementTrie(Trie):
         serializable types. A new ReplacementTrie can be instantiated from this
         resulting object.
         """
-        return {k: [(i.weight, i.value) for i in v.data]
+        return {k: [(i.weight, str(i)) for i in v.data]
                 for k, v in self.items()}
 
     def child(self, *dicts, weight=None, suffix=False):
@@ -267,6 +332,8 @@ class CharSets:
             self.conf_parse(matched)
         return self.parsed.getpart(key)
 
+    getallparts = Trie.getallparts
+
     def parse_pattern(self, key):
         """tokenizes a pattern-based replacement definition and returns a
         tuple. the first item in the tuple is a list containg all the parts to
@@ -305,7 +372,20 @@ class CharSets:
         if parent_key and parent_key not in self.key.keys:
             self.key.keygen(parent_key)
         parent = self.key.get_base(parent_key)
+        for c in chars:
+            if c not in parent:
+                try:
+                    self.getallparts(c)
+                except KeyError:
+                    raise CharSetsError(
+                        '%r not in the %r key, parent of char set %r!'
+                        % (c, self.key.base_key if parent_key is None
+                           else parent_key, key))
         self.parsed[key] = [parent[c] for c in chars]
+
+
+class CharSetsError(Exception):
+    pass
 
 
 class TransKey:
@@ -330,9 +410,9 @@ class TransKey:
             self.profile = profile
             self.normalize_profile()
             self.broken_clusters = profile.get('broken_clusters')
-            try:
+            if 'char_sets' in profile:
                 self.char_sets = CharSets(profile['char_sets'], self)
-            except KeyError:
+            else:
                 self.char_sets = {}
             if 'keys' in profile:
                 try:
