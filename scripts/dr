@@ -38,7 +38,7 @@ def decode(key, word):
 def main():
     for word in sys.argv[1].lower().split():
         hebword = decode(word)
-        print(word + ':  ', '\u200E, '.join(i.value for i in hebword[:CUTOFF]))
+        print(word + ':  ', '\u200E, '.join(str(i) for i in hebword[:CUTOFF]))
 
 if __name__ == '__main__':
     main()
