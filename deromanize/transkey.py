@@ -192,7 +192,7 @@ class ReplacementList(abc.MutableSequence):
         if not self.data:
             return string + '])'
         for i in self:
-            string += '%r, %r' % (i.weight, str(i))
+            string += '%r, ' % ((i.weight, str(i)),)
         return string[:-2] + '])'
 
     def __str__(self):
@@ -332,6 +332,8 @@ class CharSets:
             self.conf_parse(matched)
         return self.parsed.getpart(key)
 
+    getallparts = Trie.getallparts
+
     def parse_pattern(self, key):
         """tokenizes a pattern-based replacement definition and returns a
         tuple. the first item in the tuple is a list containg all the parts to
@@ -370,9 +372,20 @@ class CharSets:
         if parent_key and parent_key not in self.key.keys:
             self.key.keygen(parent_key)
         parent = self.key.get_base(parent_key)
+        for c in chars:
+            if c not in parent:
+                try:
+                    self.getallparts(c)
+                except KeyError:
+                    raise CharSetsError(
+                        '%r not in the %r key, parent of char set %r!'
+                        % (c, self.key.base_key if parent_key is None
+                           else parent_key, key))
         self.parsed[key] = [parent[c] for c in chars]
-        print(key)
-        print(self[key])
+
+
+class CharSetsError(Exception):
+    pass
 
 
 class TransKey:
@@ -397,9 +410,9 @@ class TransKey:
             self.profile = profile
             self.normalize_profile()
             self.broken_clusters = profile.get('broken_clusters')
-            try:
+            if 'char_sets' in profile:
                 self.char_sets = CharSets(profile['char_sets'], self)
-            except KeyError:
+            else:
                 self.char_sets = {}
             if 'keys' in profile:
                 try:
