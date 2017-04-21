@@ -30,6 +30,18 @@ import pathlib
 from .trees import Trie, BackTrie
 
 
+class TransKeyError(Exception):
+    pass
+
+
+class CharSetsError(TransKeyError):
+    pass
+
+
+class PatternError(TransKeyError):
+    pass
+
+
 class reify:
     """ Use as a class method decorator.  It operates almost exactly like the
     Python ``@property`` decorator, but it puts the result of the method it
@@ -37,7 +49,8 @@ class reify:
     replacing the function it decorates with an instance variable.  It is, in
     Python parlance, a non-data descriptor.
 
-    Stolen from pyramid. http://docs.pylonsproject.org/projects/pyramid/en/latest/api/decorator.html#pyramid.decorator.reify
+    Stolen from pyramid.
+    http://docs.pylonsproject.org/projects/pyramid/en/latest/api/decorator.html#pyramid.decorator.reify
     """
     def __init__(self, wrapped):
         self.wrapped = wrapped
@@ -57,7 +70,13 @@ class Replacement:
     ReplacmentList.
     """
     def __init__(self, weight: int, value):
-        self.valuetree = (value,) if isinstance(value, str) else value
+        if isinstance(value, (tuple, list)):
+            self.valuetree = value
+        elif isinstance(value, str):
+            self.valuetree = (value,)
+        else:
+            raise TransKeyError("The value of a replacement must be a string, "
+                                "not %r" % value)
         self.weight = weight
 
     def __add__(self, other):
@@ -118,8 +137,7 @@ class ReplacementList(abc.MutableSequence):
         if values is not None:
             self.extend(values, weight)
 
-    @staticmethod
-    def _prep_value(weight, value):
+    def _prep_value(self, weight, value):
         """Make sure any input is converted into a Replacement."""
         if isinstance(value, Replacement):
             return value
@@ -364,14 +382,21 @@ class CharSets:
         if not isinstance(def_, dict):
             def_ = {'chars': def_}
 
-        if isinstance(def_['chars'], str):
-            chars = self.key.profile[def_['chars']]
+        _chars = def_['chars']
+        if isinstance(_chars, str):
+            if 'key' not in def_ and _chars in self.key.profile['keys']:
+                parent_key = _chars
+                self.check_and_gen_key(parent_key)
+                parent = self.key[_chars]
+            else:
+                parent_key = def_.get('key')
+                parent = self.key.get_base(parent_key)
+            chars = self.key.prof2[_chars]
         else:
             chars = def_['chars']
-        parent_key = def_.get('key')
-        if parent_key and parent_key not in self.key.keys:
-            self.key.keygen(parent_key)
-        parent = self.key.get_base(parent_key)
+            parent_key = def_.get('key')
+            parent = self.key.get_base(parent_key)
+        self.check_and_gen_key(parent_key)
         for c in chars:
             if c not in parent:
                 try:
@@ -383,9 +408,9 @@ class CharSets:
                            else parent_key, key))
         self.parsed[key] = [parent[c] for c in chars]
 
-
-class CharSetsError(Exception):
-    pass
+    def check_and_gen_key(self, key):
+        if key and key not in self.key.keys:
+            self.key.keygen(key)
 
 
 class TransKey:
@@ -408,6 +433,7 @@ class TransKey:
                 self[k] = trie(v)
         else:
             self.profile = profile
+            self.prof2 = copy.deepcopy(self.profile)
             self.normalize_profile()
             self.broken_clusters = profile.get('broken_clusters')
             if 'char_sets' in profile:
@@ -482,15 +508,20 @@ class TransKey:
         """
         for g in profile_groups:
             if isinstance(g, str):
-                g = self.profile[g]
+                g = self.prof2[g]
+            profile_updates = []
             for k, v in g.items():
                 if any(i in k for i in self.char_sets):
                     generated = self.patterngen(
                         k, v, broken_clusters=self.broken_clusters)
                     self[key_name].extend(generated, weight)
+                    profile_updates.append((k, generated))
                 else:
                     self[key_name].setdefault(
                         k, ReplacementList(k)).extend(v, weight)
+            for key, generated in profile_updates:
+                del g[key]
+                g.update(generated)
 
     def update(self, key_name, *profile_groups, weight=None):
         """update a key with the specified profile groups. Keys containing
@@ -498,14 +529,19 @@ class TransKey:
         """
         for g in profile_groups:
             if isinstance(g, str):
-                g = self.profile[g]
+                g = self.prof2[g]
+            profile_updates = []
             for k, v in g.items():
                 if any(i in k for i in self.char_sets):
                     generated = self.patterngen(
                         k, v, broken_clusters=self.broken_clusters)
                     self[key_name].update(generated, weight)
+                    profile_updates.append((k, generated))
                 else:
                     self[key_name].__setitem__(k, v, weight)
+            for key, generated in profile_updates:
+                del g[key]
+                g.update(generated)
 
     def definecharset(self, char, character_set, parent=None):
         """legacy way to define character sets. it might even still work!"""
@@ -528,9 +564,16 @@ class TransKey:
             for i, rep_group in enumerate(rep_patterns):
                 reps = []
                 for block in rep_group:
-                    try:
-                        reps.append(keyparts[pattern_idx[block]])
-                    except KeyError:
+                    if isinstance(block, int):
+                        try:
+                            reps.append(keyparts[pattern_idx[block]])
+                        except KeyError:
+                            raise PatternError(
+                                'found reference to capture-group %s, but '
+                                "there aren't that many capture groups in "
+                                'pattern %r'
+                                % (block, key_pattern))
+                    else:
                         reps.append(ReplacementList('', [(i, block)]))
                 replacement = add_reps(reps)
                 generated.setdefault(
@@ -662,10 +705,16 @@ def cached_keys(loader, profile_file, cache_path, base_key='base'):
     cache_file = cache_path.open(encoding='utf8')
     cached_mtime = float(cache_file.readline())
     if stats.st_mtime == cached_mtime:
-        return TransKey(json.loads(cache_file.readline()),
-                        base_key=base_key,
-                        mtime=stats.st_mtime,
-                        from_cache=True)
+        try:
+            return TransKey(json.loads(cache_file.readline()),
+                            base_key=base_key,
+                            mtime=stats.st_mtime,
+                            from_cache=True)
+            cache_file.close()
+        except json.JSONDecodeError:
+            cache_file.close()
+            os.remove(cache_path)
+            raise
     else:
         cache_file.close()
         key = TransKey(loader(profile_file),

@@ -3,6 +3,8 @@ keys:
     - consonants
     - vowels
     - other
+
+  mid:
     - clusters
     - infrequent: 10
 
@@ -14,11 +16,14 @@ keys:
     groups: final
     suffix: true
 
+  cc: cc
+
 char_sets:
   C: consonants
   F:
     key: front
     chars: consonants
+  2C: cc
 
 consonants:
   ʾ: א
@@ -80,6 +85,9 @@ infrequent:
   a: א
   o: א
 
+cc:
+  CC: \1\2
+
 final:
   k: ך
   kh: ך
@@ -108,9 +116,9 @@ beginning:
   ṿ: ו
 
 beginning patterns:
-  FiCC: [\1\2\3, \1י\2\3]
-  FoCC: [\1ו\2\3, \1\2\3]
-  FeCC: [\1\2\3]
+  Fi2C: [\1\2, \1י\2]
+  Fo2C: [\1ו\2, \1\2]
+  Fe2C: [\1\2]
 
 flattened:
   v: b
