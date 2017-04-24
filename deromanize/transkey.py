@@ -27,7 +27,7 @@ import operator
 import json
 import os
 import pathlib
-from .trees import Trie, BackTrie
+from .trees import Trie, BackTrie, empty
 
 
 class TransKeyError(Exception):
@@ -281,6 +281,40 @@ class ReplacementTrie(Trie):
         return {k: [(i.weight, str(i)) for i in v.data]
                 for k, v in self.items()}
 
+    def treesimplify(self):
+        """reduces the tree to a dictionary and all special types to JSON
+        serializable types. A new ReplacementTrie can be instantiated from this
+        resulting object.
+        """
+        new = self.copy()
+        self._ts_walk(new.root)
+        return new.root
+
+    @classmethod
+    def _ts_walk(cls, node):
+        if node[0] is empty:
+            node[0] = None
+        else:
+            node[0] = (node[0].key, [(i.weight, str(i)) for i in node[0].data])
+        for newnode in node[1].values():
+            cls._ts_walk(newnode)
+
+    @classmethod
+    def tree_expand(cls, tree):
+        cls._te_walk(tree)
+        new = cls()
+        new.root = tree
+        return new
+
+    @classmethod
+    def _te_walk(cls, node, key=None):
+        if node[0] is None:
+            node[0] = empty
+        else:
+            node[0] = cls._ensurereplist(node[0][0], node[0][1])
+        for k, newnode in node[1].items():
+            cls._te_walk(newnode, k)
+
     def child(self, *dicts, weight=None, suffix=False):
         """creates a new tree containing starting from the elements in the
         parent, but updated from the supplied dicts.
@@ -430,7 +464,8 @@ class TransKey:
                     trie = ReplacementBackTrie
                 else:
                     trie = ReplacementTrie
-                self[k] = trie(v)
+                # self[k] = trie(v)
+                self[k] = trie.tree_expand(v)
         else:
             self.profile = profile
             self.prof2 = copy.deepcopy(self.profile)
@@ -679,7 +714,7 @@ class TransKey:
         data = {'keys': {}, 'profile': self.profile}
 
         for k, v in self.keys.items():
-            data['keys'][k] = v.simplify()
+            data['keys'][k] = v.treesimplify()
 
         file.write(json.dumps(data, *args, **kwargs))
 
@@ -721,7 +756,7 @@ def cached_keys(loader, profile_file, cache_path, base_key='base'):
                        base_key=base_key,
                        mtime=stats.st_mtime)
         with open(cache_file.name, 'w', encoding='utf8') as cache:
-            key.serialize(cache)
+            key.serialize(cache, ensure_ascii=False, separators=(',', ':'))
         return key
 
 

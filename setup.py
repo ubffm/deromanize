@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='deromanize',
-    version='0.0',
+    version='0.1',
     author='FID-Judaica, Goethe Universität',
     license='MLP 2.0/EUPL 1.1',
     author_email='a.christianson@ub.uni-frankfurt.de',

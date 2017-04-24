@@ -438,7 +438,7 @@ use of cached keys.
     CACHE = Path('.cache')
 
     with CONFIG_FILE.open() as config:
-	key = deromanize.cached_keys(yaml.safe_load, config, cache)
+        key = deromanize.cached_keys(yaml.safe_load, config, cache)
 
 The ``cached_keys`` function take the profile loader function as it's
 first argument (some kind of deserializer), an open, readable file
