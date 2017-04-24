@@ -108,11 +108,6 @@ class Replacement:
         return ''.join(self.value)
 
     def __deepcopy__(self, memo=None):
-        # new = Replacement(self.weight, self.value)
-        # if 'str' in self.__dict__:
-        #     new.str = self.str
-        # if 'value' in self.__dict__['value']:
-        #     new.value = self.value
         return self
 
 
@@ -451,10 +446,12 @@ class TransKey:
     """an object to build up a transliteration key from a config file. (or
     rather, a python dictionary unmarshalled from a config file.)
     """
-    def __init__(self, profile, base_key='base', mtime=0, from_cache=False):
+    def __init__(self, profile, base_key='base', mtime=0,
+                 from_cache=False, tree_cache=False):
         self.mtime = mtime
         self.base_key = base_key
         self.keys = {}
+        self.tree_cache = tree_cache
         if from_cache:
             self.profile = profile['profile']
             self.normalize_profile()
@@ -465,7 +462,7 @@ class TransKey:
                 else:
                     trie = ReplacementTrie
                 # self[k] = trie(v)
-                self[k] = trie.tree_expand(v)
+                self[k] = trie.tree_expand(v) if tree_cache else trie(v)
         else:
             self.profile = profile
             self.prof2 = copy.deepcopy(self.profile)
@@ -714,7 +711,8 @@ class TransKey:
         data = {'keys': {}, 'profile': self.profile}
 
         for k, v in self.keys.items():
-            data['keys'][k] = v.treesimplify()
+            key = v.treesimplify() if self.tree_cache else v.simplify()
+            data['keys'][k] = key
 
         file.write(json.dumps(data, *args, **kwargs))
 
@@ -731,7 +729,8 @@ def add_reps(reps):
         return get_empty_replist()
 
 
-def cached_keys(loader, profile_file, cache_path, base_key='base'):
+def cached_keys(loader, profile_file, cache_path,
+                base_key='base', tree_cache=False):
     stats = os.stat(profile_file.name)
     cache_path = pathlib.Path(cache_path)
     if not cache_path.exists():
@@ -744,7 +743,8 @@ def cached_keys(loader, profile_file, cache_path, base_key='base'):
             return TransKey(json.loads(cache_file.readline()),
                             base_key=base_key,
                             mtime=stats.st_mtime,
-                            from_cache=True)
+                            from_cache=True,
+                            tree_cache=tree_cache)
             cache_file.close()
         except json.JSONDecodeError:
             cache_file.close()
@@ -754,7 +754,8 @@ def cached_keys(loader, profile_file, cache_path, base_key='base'):
         cache_file.close()
         key = TransKey(loader(profile_file),
                        base_key=base_key,
-                       mtime=stats.st_mtime)
+                       mtime=stats.st_mtime,
+                       tree_cache=tree_cache)
         with open(cache_file.name, 'w', encoding='utf8') as cache:
             key.serialize(cache, ensure_ascii=False, separators=(',', ':'))
         return key
