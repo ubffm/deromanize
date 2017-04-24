@@ -8,6 +8,7 @@ import cProfile
 
 PROJECT_DIR = Path(deromanize.__file__).parents[1]
 CONFIG_FILE = PROJECT_DIR/'data'/'new.yml'
+CONFIG_FILE = Path('../data/new.yml')
 CUTOFF = 10
 CACHE_PATH = Path('.cache')
 with CONFIG_FILE.open() as config:

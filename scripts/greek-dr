@@ -27,7 +27,7 @@ def main():
         gkword = decode(word)
         gkword.sort()
         print(word + ':  ', ', '.join(
-            unicodedata.normalize('NFC', i.value) for i in gkword[:CUTOFF]))
+            unicodedata.normalize('NFC', str(i)) for i in gkword[:CUTOFF]))
 
 
 if __name__ == '__main__':
