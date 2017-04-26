@@ -15,7 +15,7 @@ with CONFIG_FILE.open() as config:
     key = deromanize.cached_keys(yaml.safe_load, config, CACHE_PATH)
 PROFILE = key.profile
 # PROFILE = yaml.safe_load(CONFIG_FILE.open())
-# key = deromanize.TransKey(PROFILE)
+# key = deromanize.KeyGenerator(PROFILE)
 
 @key.processor
 def decode(key, word):

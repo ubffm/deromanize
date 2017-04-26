@@ -17,7 +17,7 @@
 # If you do not alter this notice, a recipient may use your version of
 # this file under either the MPL or the EUPL.
 """
-Classes for implementing the TransKey type.
+Classes for implementing the KeyGenerator type.
 """
 import copy
 from collections import abc
@@ -30,15 +30,15 @@ import pathlib
 from .trees import Trie, BackTrie, empty
 
 
-class TransKeyError(Exception):
+class KeyGeneratorError(Exception):
     pass
 
 
-class CharSetsError(TransKeyError):
+class CharSetsError(KeyGeneratorError):
     pass
 
 
-class PatternError(TransKeyError):
+class PatternError(KeyGeneratorError):
     pass
 
 
@@ -75,8 +75,8 @@ class Replacement:
         elif isinstance(value, str):
             self.valuetree = (value,)
         else:
-            raise TransKeyError("The value of a replacement must be a string, "
-                                "not %r" % value)
+            raise KeyGeneratorError(
+                "The value of a replacement must be a string, not %r" % value)
         self.weight = weight
 
     def __add__(self, other):
@@ -242,11 +242,11 @@ class RepListList(list):
         return add_reps(self)
 
 
-class ReplacementTrie(Trie):
+class ReplacementKey(Trie):
     """a tree the only contains ReplacementLists. used for tokenizing Romanized
     strings.
     """
-    template = 'ReplacementTrie(%r)'
+    template = 'ReplacementKey(%r)'
 
     def __repr__(self):
         return self.template % self.simplify()
@@ -270,16 +270,15 @@ class ReplacementTrie(Trie):
 
     def simplify(self):
         """reduces the tree to a dictionary and all special types to JSON
-        serializable types. A new ReplacementTrie can be instantiated from this
+        serializable types. A new ReplacementKey can be instantiated from this
         resulting object.
         """
         return {k: [(i.weight, str(i)) for i in v.data]
                 for k, v in self.items()}
 
     def treesimplify(self):
-        """reduces the tree to a dictionary and all special types to JSON
-        serializable types. A new ReplacementTrie can be instantiated from this
-        resulting object.
+        """reduces the tree to and all special types to JSON serializable types. A new
+        ReplacementKey can be instantiated from this resulting object.
         """
         new = self.copy()
         self._ts_walk(new.root)
@@ -314,7 +313,7 @@ class ReplacementTrie(Trie):
         """creates a new tree containing starting from the elements in the
         parent, but updated from the supplied dicts.
         """
-        child = ReplacementBackTrie() if suffix else ReplacementTrie()
+        child = ReplacementBackKey() if suffix else ReplacementKey()
         if type(self) is type(child):
             child = self.copy()
         else:
@@ -335,11 +334,11 @@ class ReplacementTrie(Trie):
         return ReplacementList(key, value, weight)
 
 
-class ReplacementBackTrie(ReplacementTrie, BackTrie):
-    """same as ReplacementTrie, but it will begin analysing a string from the
+class ReplacementBackKey(ReplacementKey, BackTrie):
+    """same as ReplacementKey, but it will begin analysing a string from the
     end, so it can be used for identifying suffixes.
     """
-    template = 'ReplacementBackTrie(%r)'
+    template = 'ReplacementBackKey(%r)'
 
 
 class CharSets:
@@ -442,7 +441,7 @@ class CharSets:
             self.key.keygen(key)
 
 
-class TransKey:
+class KeyGenerator:
     """an object to build up a transliteration key from a config file. (or
     rather, a python dictionary unmarshalled from a config file.)
     """
@@ -458,10 +457,9 @@ class TransKey:
             self.broken_clusters = profile.get('broken_clusters')
             for k, v in profile['keys'].items():
                 if self.profile['keys'][k].get('suffix'):
-                    trie = ReplacementBackTrie
+                    trie = ReplacementBackKey
                 else:
-                    trie = ReplacementTrie
-                # self[k] = trie(v)
+                    trie = ReplacementKey
                 self[k] = trie.tree_expand(v) if tree_cache else trie(v)
         else:
             self.profile = profile
@@ -476,7 +474,7 @@ class TransKey:
                 try:
                     self.keygen(base_key)
                 except KeyError:
-                    self[base_key] = ReplacementTrie()
+                    self[base_key] = ReplacementKey()
                 for k in profile['keys']:
                     if k == base_key or k in self.keys:
                         continue
@@ -527,7 +525,7 @@ class TransKey:
         specified `profile_groups`.
         """
         if parent is None:
-            parent = ReplacementTrie()
+            parent = ReplacementKey()
         else:
             parent = self.get_base(parent)
         dicts = (self.profile[g] for g in profile_groups)
@@ -574,11 +572,6 @@ class TransKey:
             for key, generated in profile_updates:
                 del g[key]
                 g.update(generated)
-
-    def definecharset(self, char, character_set, parent=None):
-        """legacy way to define character sets. it might even still work!"""
-        parent = self.get_base(parent)
-        self.char_sets[char] = [parent[c] for c in character_set]
 
     def patterngen(self, key_pattern, rep_patterns,
                    weight=0, broken_clusters=None):
@@ -629,7 +622,7 @@ class TransKey:
 
     @staticmethod
     def _get_sane_key(keyparts, broken_clusters=None):
-        """Helper function for TransKey.patterngen(), so the keys actually
+        """Helper function for KeyGenerator.patterngen(), so the keys actually
         make sense (i.e. don't create any unintentional digraphs).
         """
         if not broken_clusters:
@@ -657,14 +650,6 @@ class TransKey:
                 newparts.append(part)
         newparts.append(oldparts[-1])
         return ''.join(newparts)
-
-    def patterns2key(self, target, pattern_dict, weight=None,
-                     broken_clusters=None):
-        target = self.get_base(target)
-        for pattern_key, pattern_rep in pattern_dict.items():
-            generated = self.patterngen(pattern_key, pattern_rep,
-                                        weight=weight, broken_clusters=None)
-            target.update(generated)
 
     def processor(self, func):
         """decorator to define the process for decoding words. Basicaly just
@@ -699,8 +684,8 @@ class TransKey:
             try:
                 return self[self.base_key]
             except KeyError:
-                return ReplacementTrie()
-        elif isinstance(base, ReplacementTrie):
+                return ReplacementKey()
+        elif isinstance(base, ReplacementKey):
             return base
         else:
             raise TypeError('%s is not supported as "base" argument.'
@@ -740,11 +725,11 @@ def cached_keys(loader, profile_file, cache_path,
     cached_mtime = float(cache_file.readline())
     if stats.st_mtime == cached_mtime:
         try:
-            return TransKey(json.loads(cache_file.readline()),
-                            base_key=base_key,
-                            mtime=stats.st_mtime,
-                            from_cache=True,
-                            tree_cache=tree_cache)
+            return KeyGenerator(json.loads(cache_file.readline()),
+                                base_key=base_key,
+                                mtime=stats.st_mtime,
+                                from_cache=True,
+                                tree_cache=tree_cache)
             cache_file.close()
         except json.JSONDecodeError:
             cache_file.close()
@@ -752,10 +737,10 @@ def cached_keys(loader, profile_file, cache_path,
             raise
     else:
         cache_file.close()
-        key = TransKey(loader(profile_file),
-                       base_key=base_key,
-                       mtime=stats.st_mtime,
-                       tree_cache=tree_cache)
+        key = KeyGenerator(loader(profile_file),
+                           base_key=base_key,
+                           mtime=stats.st_mtime,
+                           tree_cache=tree_cache)
         with open(cache_file.name, 'w', encoding='utf8') as cache:
             key.serialize(cache, ensure_ascii=False, separators=(',', ':'))
         return key

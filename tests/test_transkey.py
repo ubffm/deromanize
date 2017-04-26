@@ -42,7 +42,7 @@ def rep():
 
 @pytest.fixture
 def key():
-    key = deromanize.TransKey(
+    key = deromanize.KeyGenerator(
         PROFILE, 'base', 'consonants', 'vowels', 'clusters')
     return key
 

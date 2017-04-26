@@ -105,12 +105,12 @@ Given the above configuration, we can do something like this:
 
 .. code:: python
 
-   >>> # TransKeys only deal with python objects, so we have to
+   >>> # KeyGenerators only deal with python objects, so we have to
    >>> # deserialize it from our chosen format.
    >>> import deromanize
    >>> import yaml
    >>> PROFILE = yaml.safe_load(open('above_profile.yml'))
-   >>> key = deromanize.TransKey(PROFILE)
+   >>> key = deromanize.KeyGenerator(PROFILE)
 
 From here, we can start sending words to the ``base`` key and see what
 comes out.
@@ -257,7 +257,7 @@ the top of this README. We have a line like this in the file:
 
    y: [יי, י]
 
-When we run this through the TransKey instance we can see what happens
+When we run this through the KeyGenerator instance we can see what happens
 to it:
 
 .. code:: python
@@ -303,7 +303,7 @@ before resorting for that. These may be rare cases as is the case with
 my ``infrequent`` character group, or it may be a way to hedge bets
 against human error in input data.
 
-What ``infrequent: 10`` does is tell the ``TransKey`` instance to add
+What ``infrequent: 10`` does is tell the ``KeyGenerator`` instance to add
 ``10`` to the index number of each Replacement to generate its
 weight. Groups used in this way will not overwrite groups that already
 values that already exist in the key. Instead, the replacement list will
