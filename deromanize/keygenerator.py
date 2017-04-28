@@ -26,6 +26,7 @@ import functools
 import json
 import os
 import pathlib
+import operator
 from .trees import Trie, BackTrie, empty
 
 
@@ -134,7 +135,6 @@ class ReplacementList(abc.MutableSequence):
         if key is not None:
             self.key = key
         elif parents is None:
-            print(key, parents)
             raise KeyGeneratorError('unable to define key for ReplacementList')
 
         if parents is None:
@@ -615,7 +615,9 @@ class KeyGenerator:
         rep_patterns = [self._parse_rep(i) for i in rep_patterns]
         generated = {}
         for keyparts in itertools.product(*blocks):
-            key = self._get_sane_key(keyparts, broken_clusters)
+            # key = self._get_sane_key(keyparts, broken_clusters)
+            replist = ReplacementList(parents=keyparts, profile=self.profile)
+            generated[replist.key] = replist
             for i, rep_group in enumerate(rep_patterns):
                 reps = []
                 for block in rep_group:
@@ -629,10 +631,10 @@ class KeyGenerator:
                                 'pattern %r'
                                 % (block, key_pattern))
                     else:
-                        reps.append(ReplacementList('', [(i, block)]))
+                        reps.append(ReplacementList(
+                            '', [(i, block)], profile=self.profile))
                 replacement = add_reps(reps)
-                generated.setdefault(
-                    key, ReplacementList(key)).extend(replacement.data, weight)
+                replist.extend(replacement.data, weight)
 
         return generated
 
@@ -739,11 +741,7 @@ def get_empty_replist():
 def add_reps(reps):
     """Add together a bunch of ReplacementLists"""
     try:
-        return ReplacementList(
-            ''.join(i.key for i in reps),
-            [Replacement(sum(i.weight for i in parts),
-                         tuple(i for i in parts))
-             for parts in itertools.product(*reps)])
+        return functools.reduce(operator.add, reps)
     except TypeError:
         return get_empty_replist()
 
