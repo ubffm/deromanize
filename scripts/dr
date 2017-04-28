@@ -8,14 +8,13 @@ import cProfile
 
 PROJECT_DIR = Path(deromanize.__file__).parents[1]
 CONFIG_FILE = PROJECT_DIR/'data'/'new.yml'
-CONFIG_FILE = Path('../data/new.yml')
 CUTOFF = 10
 CACHE_PATH = Path('.cache')
-with CONFIG_FILE.open() as config:
-    key = deromanize.cached_keys(yaml.safe_load, config, CACHE_PATH)
-PROFILE = key.profile
-# PROFILE = yaml.safe_load(CONFIG_FILE.open())
-# key = deromanize.KeyGenerator(PROFILE)
+# with CONFIG_FILE.open() as config:
+#     key = deromanize.cached_keys(yaml.safe_load, config, CACHE_PATH)
+# PROFILE = key.profile
+PROFILE = yaml.safe_load(CONFIG_FILE.open())
+key = deromanize.KeyGenerator(PROFILE)
 
 @key.processor
 def decode(key, word):
@@ -41,6 +40,7 @@ def main():
     for word in sys.argv[1].lower().split():
         hebword = decode(word)
         print(word + ':  ', '\u200E, '.join(str(i) for i in hebword[:CUTOFF]))
+
 
 if __name__ == '__main__':
     main()

@@ -23,7 +23,6 @@ import copy
 from collections import abc
 import itertools
 import functools
-import operator
 import json
 import os
 import pathlib
@@ -73,7 +72,8 @@ class Replacement:
         if isinstance(value, (tuple, list)):
             self.valuetree = value
         elif isinstance(value, str):
-            self.valuetree = (value,)
+            self.str = value
+            self.value = (value,)
         else:
             raise KeyGeneratorError(
                 "The value of a replacement must be a string, not %r" % value)
@@ -101,7 +101,9 @@ class Replacement:
 
     @reify
     def value(self):
-        return tuple(self._value())
+        this = tuple(self._value())
+        del self.valuetree
+        return this
 
     @reify
     def str(self):
@@ -126,8 +128,20 @@ class ReplacementList(abc.MutableSequence):
     """
     reptype = Replacement
 
-    def __init__(self, key, values: list=None, weight=None):
-        self.key = key
+    def __init__(self, key=None, values: list=None, weight=None,
+                 parents=None, profile=None):
+        self.profile = profile or {}
+        if key is not None:
+            self.key = key
+        elif parents is None:
+            print(key, parents)
+            raise KeyGeneratorError('unable to define key for ReplacementList')
+
+        if parents is None:
+            self.keytree = key
+            self.keyparts = (key,)
+        else:
+            self.keytree = parents
         self.data = []
         if values is not None:
             self.extend(values, weight)
@@ -141,24 +155,50 @@ class ReplacementList(abc.MutableSequence):
         elif isinstance(value, str):
             return Replacement(weight, value)
         else:
-            raise TypeError(
+            raise KeyGeneratorError(
                 '%s is not supported for insertion in ReplacementList'
                 % type(value))
 
-    def _value(self):
-        for val in self.valuetree:
-            if isinstance(val, str):
-                yield val
+    def _keyparts(self):
+        for part in self.keytree:
+            if isinstance(part, str):
+                yield part
             else:
-                yield from val.value
+                yield from part.keyparts
 
     @reify
-    def value(self):
-        return list(self._value())
+    def keyparts(self):
+        this = tuple(self._keyparts())
+        del self.keytree
+        return this
 
     @reify
-    def str(self):
-        return ''.join(self.value)
+    def key(self):
+        broken_clusters = self.profile.get('broken_clusters')
+        if not broken_clusters:
+            return ''.join(self.keyparts)
+
+        newparts = [self.keyparts[0]]
+        for i, part in enumerate(self.keyparts[1:]):
+            prev = self.keyparts[i]
+            cluster = prev + part
+            if cluster in broken_clusters:
+                newparts[i] = broken_clusters[cluster]
+            else:
+                newparts.append(part)
+        return ''.join(newparts)
+
+    def __add__(self, other):
+        """When two ReplacementList instances are added together, the keys are
+        concatinated, and all combinations of the replacements are also added
+        together. It's a bit multiplicative, really.
+        """
+        composite_values = [x + y for x, y in itertools.product(self, other)]
+
+        return ReplacementList(
+            values=composite_values,
+            parents=(self, other),
+            profile=self.profile)
 
     def __setitem__(self, i, value):
         self.data[i] = self._prep_value(i, value)
@@ -189,16 +229,6 @@ class ReplacementList(abc.MutableSequence):
         """add additional weight to each item in the list"""
         for i in self:
             i.weight += weight
-
-    def __add__(self, other):
-        """When two ReplacementList instances are added together, the keys are
-        concatinated, and all combinations of the replacements are also added
-        together. It's a bit multiplicative, really.
-        """
-        key = self.key + other.key
-        composite_values = [x + y for x, y in itertools.product(self, other)]
-
-        return ReplacementList(key, composite_values)
 
     def __repr__(self):
         string = "ReplacementList({!r}, [".format(self.key)
@@ -680,13 +710,13 @@ class KeyGenerator:
     def get_base(self, base=None):
         if isinstance(base, str):
             return self[base]
+        elif isinstance(base, ReplacementKey):
+            return base
         elif base is None:
             try:
                 return self[self.base_key]
             except KeyError:
                 return ReplacementKey()
-        elif isinstance(base, ReplacementKey):
-            return base
         else:
             raise TypeError('%s is not supported as "base" argument.'
                             % type(base))
@@ -709,7 +739,11 @@ def get_empty_replist():
 def add_reps(reps):
     """Add together a bunch of ReplacementLists"""
     try:
-        return functools.reduce(operator.add, reps)
+        return ReplacementList(
+            ''.join(i.key for i in reps),
+            [Replacement(sum(i.weight for i in parts),
+                         tuple(i for i in parts))
+             for parts in itertools.product(*reps)])
     except TypeError:
         return get_empty_replist()
 
@@ -741,9 +775,19 @@ def cached_keys(loader, profile_file, cache_path,
                            base_key=base_key,
                            mtime=stats.st_mtime,
                            tree_cache=tree_cache)
-        with open(cache_file.name, 'w', encoding='utf8') as cache:
-            key.serialize(cache, ensure_ascii=False, separators=(',', ':'))
-        return key
+        pid = os.fork()
+        if pid == 0:
+            cache_writer(cache_path, key)
+            os._exit(0)
+        else:
+            return key
+        # cache_writer(cache_path, key)
+        # return key
+
+
+def cache_writer(path, key):
+    with path.open('w', encoding='utf8') as cache:
+        key.serialize(cache, ensure_ascii=False, separators=(',', ':'))
 
 
 # Just another Trie for parsing regex-like capture group syntax for
