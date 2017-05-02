@@ -65,8 +65,6 @@ def main():
     for word in sys.argv[1].lower().split():
         hebword = decode(word)
         print(word + ':  ', '\u200E, '.join(str(i) for i in hebword[:CUTOFF]))
-        for i in hebword:
-            print(i.keyvalue)
 
 
 if __name__ == '__main__':
