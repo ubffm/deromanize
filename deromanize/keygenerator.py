@@ -69,16 +69,17 @@ class Replacement:
     own doesn't know what it's replacing. It should be an item in a
     ReplacmentList.
     """
-    def __init__(self, weight: int, value):
+    def __init__(self, weight: int, value, key=None):
         if isinstance(value, (tuple, list)):
             self.valuetree = value
         elif isinstance(value, str):
             self.str = value
-            self.value = (value,)
+            self.keyvalue = ((value, key),)
         else:
             raise KeyGeneratorError(
                 "The value of a replacement must be a string, not %r" % value)
         self.weight = weight
+        self.key = key
 
     def __add__(self, other):
         """adding one Replacement to another results in them combining their
@@ -93,18 +94,21 @@ class Replacement:
     def __str__(self):
         return self.str
 
-    def _value(self):
+    def _keyvalue(self):
         for val in self.valuetree:
             if isinstance(val, str):
-                yield val
+                yield val, self.key
             else:
-                yield from val.value
+                yield from val.keyvalue
 
     @reify
-    def value(self):
-        this = tuple(self._value())
-        del self.valuetree
+    def keyvalue(self):
+        this = tuple(self._keyvalue())
         return this
+
+    @property
+    def value(self):
+        return tuple(i[0] for i in self.keyvalue)
 
     @reify
     def str(self):
@@ -151,9 +155,9 @@ class ReplacementList(abc.MutableSequence):
         if isinstance(value, Replacement):
             return value
         elif isinstance(value, (tuple, list)) and len(value) == 2:
-            return Replacement(*value)
+            return Replacement(*value, key=self.key)
         elif isinstance(value, str):
-            return Replacement(weight, value)
+            return Replacement(weight, value, key=self.key)
         else:
             raise KeyGeneratorError(
                 '%s is not supported for insertion in ReplacementList'
@@ -735,7 +739,7 @@ class KeyGenerator:
 
 
 def get_empty_replist():
-    return ReplacementList('', [Replacement(0, '')])
+    return ReplacementList('', [Replacement(0, '', '')])
 
 
 def add_reps(reps):
