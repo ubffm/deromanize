@@ -12,12 +12,12 @@ CONFIG_FILE = PROJECT_DIR/'data'/'new.yml'
 CUTOFF = 10
 CACHE_PATH = Path('.cache')
 # use caching
-with CONFIG_FILE.open() as config:
-    keys = deromanize.cached_keys(yaml.safe_load, config, CACHE_PATH)
-PROFILE = keys.profile
+# with CONFIG_FILE.open() as config:
+#     keys = deromanize.cached_keys(yaml.safe_load, config, CACHE_PATH)
+# PROFILE = keys.profile
 # don't use caching
-# PROFILE = yaml.safe_load(CONFIG_FILE.open()) 
-# keys = deromanize.KeyGenerator(PROFILE)
+PROFILE = yaml.safe_load(CONFIG_FILE.open()) 
+keys = deromanize.KeyGenerator(PROFILE)
 
 @keys.processor
 def decode(keys, word):
@@ -64,6 +64,7 @@ def no_end(keys, word):
 def main():
     for word in sys.argv[1].lower().split():
         hebword = decode(word)
+        hebword.prune()
         print(word + ':  ', '\u200E, '.join(str(i) for i in hebword[:CUTOFF]))
 
 

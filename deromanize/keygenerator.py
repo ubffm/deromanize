@@ -74,7 +74,7 @@ class Replacement:
             self.valuetree = value
         elif isinstance(value, str):
             self.str = value
-            self.keyvalue = ((value, key),)
+            self.keyvalue = ((key, value),)
         else:
             raise KeyGeneratorError(
                 "The value of a replacement must be a string, not %r" % value)
@@ -97,7 +97,7 @@ class Replacement:
     def _keyvalue(self):
         for val in self.valuetree:
             if isinstance(val, str):
-                yield val, self.key
+                yield self.key, val
             else:
                 yield from val.keyvalue
 
@@ -108,6 +108,10 @@ class Replacement:
 
     @property
     def value(self):
+        return tuple(i[1] for i in self.keyvalue)
+
+    @property
+    def keyparts(self):
         return tuple(i[0] for i in self.keyvalue)
 
     @reify
@@ -191,6 +195,26 @@ class ReplacementList(abc.MutableSequence):
             else:
                 newparts.append(part)
         return ''.join(newparts)
+
+    @reify
+    def valueparts(self):
+        vp = []
+        for val in self:
+            offset = 0
+            new_vals = []
+            for i, part in enumerate(val.keyvalue):
+                if self.keyparts[i+offset] == part[0]:
+                    new_vals.append(part[1])
+                elif self.keyparts[i+offset+1] == part[0]:
+                    new_vals.extend(('', part[1]))
+                    offset += 1
+                elif self.keyparts[i+offset+1] == val.keyparts[i+1]:
+                    new_vals.append(part[1])
+                else:
+                    raise KeyGeneratorError(
+                        'something went wrong with valueparts.')
+            vp.append(tuple(new_vals))
+        return vp
 
     def __add__(self, other):
         """When two ReplacementList instances are added together, the keys are

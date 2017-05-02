@@ -2,6 +2,7 @@ keys:
   base:
     - consonants
     - vowels
+    - other
     - clusters
     - infrequent: 15
     - vowel errors: 10
@@ -60,6 +61,9 @@ vowels:
   ă: ''
   ŏ: ''
 
+other:
+  '-': ־
+
 clusters:
   yû: יו
   ûy: וי
@@ -117,3 +121,9 @@ flattened:
   v: b
   ḵ: k
   f: p
+
+# The data structures below are not for use by keygenerators, but for
+# the final decoder.
+gem_prefixes: [ha, mi, ba, ka, la, še, wa]
+joined_prefixes: hmbvklšwû
+prefix_vowels: ĕieaioēā
