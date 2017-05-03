@@ -48,7 +48,8 @@ def decode(keys, word):
 
 
 def no_end(keys, word):
-    # this is where words go when getting the ending first produces strange results
+    # this is where words go when getting the ending first produces strange
+    # results 
     front, remainder = keys['front'].getpart(word)
     if remainder:
         end, remainder = keys['end'].getpart(remainder)
