@@ -232,6 +232,17 @@ class Trie(abc.MutableMapping):
             results.append(value)
         return results
 
+    def serializable(self):
+        root = self.copy().root
+        self._put_none(root)
+        return root
+
+    def _put_none(self, node):
+        if node[0] is empty:
+            node[0] = None
+        for node in node[1].values():
+            self._put_none(node)
+
 
 class BackTrie(Trie):
     """Subclass of Trie that takes it from the back. I used to call this a
