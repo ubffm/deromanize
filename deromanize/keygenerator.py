@@ -286,7 +286,7 @@ class ReplacementList(abc.MutableSequence):
                 repeats.append(i)
             seen.add(rep.str)
         for i in repeats[::-1]:
-            self.data.remove(i)
+            del self.data[i]
 
     def __deepcopy__(self, memo=None):
         new = type(self)(self.key)

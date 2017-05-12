@@ -86,6 +86,8 @@ infrequent:
   î: א
   ê: א
   ô: א
+  s: ש
+  t: ט
 
 beginning:
   y: י
@@ -98,7 +100,8 @@ vowel errors:
   ē: י
   e: י
   â: ''
-  t: ט
+  a: א
+  ā: א
 
 final:
   k: ך
