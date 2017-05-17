@@ -2,6 +2,7 @@ keys:
   base:
     - consonants
     - vowels
+    - other
     - vowel errors: 10 
 
   mid:
@@ -71,7 +72,7 @@ vowels:
   ŏ: ''
 
 other:
-  '"': ״
+  '"': '"'
 
 clusters:
   yû: יו
@@ -119,6 +120,7 @@ final:
   u: ו
   "'": [׳, ע, א]
   ē: ה
+  e: ה
   ā: [ה, '']
   ō: ה
   ot: ות
@@ -131,7 +133,7 @@ final:
   îm/ôt: ים/ות
 
 final errors:
-  e: [י, ה, א]
+  e: [י, א]
   a: [ה, א]
   ē: [י, [20, א]]
   ā: א
