@@ -14,7 +14,7 @@ keys:
     groups:
       - clusters
       - final
-      - infrequent: 5
+      - infrequent: 15
       - final errors: 10
     suffix: true
 
@@ -50,7 +50,7 @@ consonants:
   ś: ש
   š: ש
   t: ת
-  "'": [א, ע]
+  "'": [א, ע, '']
 
 vowels:
   î: [י, [10, '']]
@@ -138,6 +138,7 @@ final errors:
   ē: [י, [20, א]]
   ā: א
   ō: ו
+  âw: [ו, יו]
   āw: ו
   aw: יו
 
