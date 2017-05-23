@@ -640,10 +640,10 @@ class KeyGenerator:
         blocks, pattern_idx = self.char_sets.parse_pattern(key_pattern)
         if isinstance(rep_patterns, str) or isinstance(rep_patterns[0], int):
             rep_patterns = [rep_patterns]
-        rep_patterns = [self._parse_rep(i) for i in rep_patterns]
+        rep_patterns = self._normalize_rp(
+            [self._parse_rep(i) for i in rep_patterns])
         generated = {}
         for keyparts in itertools.product(*blocks):
-            # key = self._get_sane_key(keyparts, broken_clusters)
             replist = ReplacementList(parents=keyparts, profile=self.profile)
             generated[replist.key] = replist
             for i, rep_group in enumerate(rep_patterns):
@@ -681,35 +681,17 @@ class KeyGenerator:
         return results
 
     @staticmethod
-    def _get_sane_key(keyparts, broken_clusters=None):
-        """Helper function for KeyGenerator.patterngen(), so the keys actually
-        make sense (i.e. don't create any unintentional digraphs).
-        """
-        if not broken_clusters:
-            letters = []
-            for p in keyparts:
-                try:
-                    letters.append(p.key)
-                except AttributeError:
-                    letters.append(p)
-            return ''.join(letters)
-
-        oldparts = []
-        for p in keyparts:
-            try:
-                oldparts.append(p.key)
-            except AttributeError:
-                oldparts.append(p)
-        newparts = []
-        for i, part in enumerate(oldparts[:-1]):
-            nextpart = oldparts[i+1]
-            try:
-                newparts.append(broken_clusters[part + nextpart])
-                oldparts[i+1] = ''
-            except KeyError:
-                newparts.append(part)
-        newparts.append(oldparts[-1])
-        return ''.join(newparts)
+    def _normalize_rp(rep_pats):
+        if len(rep_pats) == 1 or all(
+                len(i) == len(rep_pats[0]) for i in rep_pats[1:]):
+            return rep_pats
+        by_len = sorted(rep_pats, key=len, reverse=True)
+        for i, group in enumerate(by_len[0]):
+            if isinstance(group, str):
+                for pat in by_len[1:]:
+                    if isinstance(pat[i], int):
+                        pat.insert(i, '')
+        return rep_pats
 
     def processor(self, func):
         """decorator to define the process for decoding words. Basicaly just

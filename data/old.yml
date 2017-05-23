@@ -18,7 +18,9 @@ keys:
       - final errors: 10
     suffix: true
 
-  front: beginning
+  front:
+    - beginning
+    - infrequent: 15
 
 char_sets:
   V: vowels
