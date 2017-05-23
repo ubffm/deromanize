@@ -22,6 +22,7 @@ keys:
 
 char_sets:
   V: vowels
+  C: consonants
 
 consonants:
   ʾ: א
@@ -82,6 +83,7 @@ clusters:
 
 mid_patterns:
   VV: [\1א\2, \1\2, \1ע\2]
+  iCV: [י\1\2, \1\2]
 
 infrequent:
   î: א
