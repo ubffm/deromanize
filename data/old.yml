@@ -25,6 +25,9 @@ keys:
 char_sets:
   V: vowels
   C: consonants
+  EV:
+    chars: vowels
+    key: end
 
 consonants:
   ʾ: א
@@ -38,6 +41,7 @@ consonants:
   ḥ: ח
   ṭ: ט
   y: [יי, י]
+  j: [יי, י]
   k: כ
   ḵ: כ
   l: ל
@@ -96,6 +100,7 @@ infrequent:
 
 beginning:
   y: י
+  j: י
   w: ו
 
 
@@ -131,15 +136,18 @@ final:
   ōt: ות
   it: ית
   ayim: [יים, ים]
+  ajim: [יים, ים]
   āw: יו
   aw: ו
   yā: יה
+  jā: יה
   îm/ôt: ים/ות
+  iCEV: [י\1\2, \1\2]
 
 final errors:
   e: [י, א]
   a: [ה, א]
-  ē: [י, [20, א]]
+  ē: [י, א]
   ā: א
   ō: ו
   âw: [ו, יו]
