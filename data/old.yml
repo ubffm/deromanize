@@ -15,7 +15,7 @@ keys:
       - clusters
       - final
       - infrequent: 15
-      - final errors: 10
+      - final errors: 5
     suffix: true
 
   front:
@@ -65,6 +65,7 @@ vowels:
   â: א
   ô: ו
   û: ו
+  ū: ו
   ī: י
   ē: ''
   ā: ''
@@ -84,12 +85,14 @@ other:
 clusters:
   yû: יו
   ûy: וי
+  yô: יו
+  ôy: וי
   îy: [יי, [10, י]]
   yî: [יי, [10, י]]
 
 mid_patterns:
   VV: [\1א\2, \1\2, \1ע\2]
-  iCV: [י\1\2, \1\2]
+  # iCV: [י\1\2, \1\2]
 
 infrequent:
   î: א
@@ -115,10 +118,10 @@ vowel errors:
 final:
   k: ך
   ḵ: ך
-  kā: [ך, כה]
-  ḵā: [ך, כה]
-  ka: [ך, כה]
-  ḵa: [ך, כה]
+  kā: [כה, ך]
+  ḵā: [כה, ך]
+  ka: [כה, ך]
+  ḵa: [כה, ך]
   m: ם
   n: ן
   f: ף
@@ -142,7 +145,7 @@ final:
   yā: יה
   jā: יה
   îm/ôt: ים/ות
-  iCEV: [י\1\2, \1\2]
+  # iCEV: [י\1\2, \1\2]
 
 final errors:
   e: [י, א]
@@ -150,6 +153,9 @@ final errors:
   ē: [י, א]
   ā: א
   ō: ו
+  û: [ו, וא]
+  ô: [ו, וא]
+  î: [י, יא]
   âw: [ו, יו]
   āw: ו
   aw: יו
