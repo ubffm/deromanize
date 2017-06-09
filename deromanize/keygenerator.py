@@ -70,11 +70,11 @@ class Replacement:
     ReplacmentList.
     """
     def __init__(self, weight: int, value, key=None):
-        if isinstance(value, (tuple, list)):
-            self.valuetree = value
-        elif isinstance(value, str):
+        if isinstance(value, str):
             self.str = value
             self.keyvalue = ((key, value),)
+        if isinstance(value, abc.Sequence):
+            self.valuetree = value
         else:
             raise KeyGeneratorError(
                 "The value of a replacement must be a string, not %r" % value)
