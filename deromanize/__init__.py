@@ -17,7 +17,9 @@
 # If you do not alter this notice, a recipient may use your version of
 # this file under either the MPL or the EUPL.
 from .keygenerator import (
-        KeyGenerator,
-        cached_keys,
-        add_reps,
-        get_empty_replist)
+    KeyGenerator,
+    Replacement,
+    RepList,
+    cached_keys,
+    add_reps,
+    get_empty_replist)

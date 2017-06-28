@@ -1,8 +1,9 @@
 #!/usr/bin/env pytest
 import deromanize
-import deromanize.transkey as tk
 import pytest
 import yaml
+from deromanize import trees
+
 
 # PROJECT_DIR = os.path.dirname(os.path.dirname(deromanize.__file__))
 # CONFIG_FILE = os.path.join(PROJECT_DIR, 'data', 'test.yml')
@@ -24,12 +25,12 @@ def profile():
 
 @pytest.fixture
 def trie():
-    return tk.Trie(profile())
+    return trees.Trie(profile())
 
 
 @pytest.fixture
 def suffixtree():
-    return tk.SuffixTree(profile())
+    return trees.BackTrie(profile())
 
 
 @pytest.fixture
@@ -42,8 +43,7 @@ def rep():
 
 @pytest.fixture
 def key():
-    key = deromanize.KeyGenerator(
-        PROFILE, 'base', 'consonants', 'vowels', 'clusters')
+    key = deromanize.KeyGenerator(PROFILE)
     return key
 
 #####################
@@ -112,9 +112,8 @@ def test_transkey(key):
     rep = deromanize.add_reps(key['base'].getallparts('shalom'))
     print(rep)
     assert str(rep) == 'shalom:\n 0 שלומ\n 1 שלמ'
-    key.new('endings', 'final', base='base', suffix=True)
-    rep = deromanize.add_reps(key['endings'].getallparts('shalom'))
-    assert isinstance(key['endings'], tk.SuffixTree)
+    rep = deromanize.add_reps(key['end'].getallparts('shalom'))
+    assert isinstance(key['end'], trees.BackTrie)
     print(rep)
     assert str(rep) == 'shalom:\n 0 שלום'
 

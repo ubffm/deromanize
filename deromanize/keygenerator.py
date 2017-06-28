@@ -20,13 +20,14 @@
 Classes for implementing the KeyGenerator type.
 """
 import copy
-from collections import abc
-import itertools
 import functools
+import itertools
 import json
+import operator
 import os
 import pathlib
-import operator
+from collections import abc
+
 from .trees import Trie, BackTrie, empty
 
 
@@ -293,11 +294,17 @@ class ReplacementList(abc.MutableSequence):
         new.data = self.data.copy()
         return new
 
+    def simplify(self):
+        return (self.key, [(i.weight, i.value) for i in self])
+
 
 class RepListList(list):
     """I'm to lazy to type deromanize.add_reps"""
     def add(self):
         return add_reps(self)
+
+    def __repr__(self):
+        return 'RepListList(%r)' % [i.simplify() for i in self]
 
 
 class ReplacementKey(Trie):
@@ -520,6 +527,7 @@ class KeyGenerator:
                     trie = ReplacementKey
                 self[k] = trie.tree_expand(v) if tree_cache else trie(v)
         else:
+            # profile is static. prof2 is modified while the keys are generated
             self.profile = profile
             self.prof2 = copy.deepcopy(self.profile)
             self.normalize_profile()

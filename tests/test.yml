@@ -1,3 +1,17 @@
+keys:
+  base:
+    - consonants
+    - vowels
+    - other
+    - clusters
+
+  mid:
+    - infrequent: 10
+
+  end:
+    groups: final
+    suffix: true
+
 consonants:
   ʾ: א
   b: ב
@@ -71,8 +85,3 @@ final:
   ayim: [יים, ים]
   aṿ: [יו, ו]
   yah: יה
-
-flattened:
-  v: b
-  ḵ: k
-  f: p
