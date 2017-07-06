@@ -69,7 +69,7 @@ vowels:
   ī: י
   ē: ''
   ā: ''
-  ō: [ו, '']
+  ō: ['', ו]
   i: ''
   e: ''
   a: ''
@@ -80,7 +80,7 @@ vowels:
   ŏ: ''
 
 other:
-  '"': '"'
+  '"': '״'
 
 clusters:
   yû: יו
@@ -100,11 +100,16 @@ infrequent:
   ô: א
   s: ש
   t: ט
+  v: [וו, ו]
+  # not sure the following changes are a net positive, but they
+  # but they probably will be after caching.
+  # ḥ: כ
+  # k: ח
 
 beginning:
   y: י
   j: י
-  w: ו
+  w: [ו, וו]
 
 
 vowel errors:
@@ -156,7 +161,7 @@ final errors:
   û: [ו, וא]
   ô: [ו, וא]
   î: [י, יא]
-  âw: [ו, יו]
+  âw: [יו, ו]
   āw: ו
   aw: יו
 
@@ -168,5 +173,5 @@ flattened:
 # The data structures below are not for use by keygenerators, but for
 # the final decoder.
 gem_prefixes: [ha, mi, ba, ka, la, še, wa]
-joined_prefixes: hmbvklšwû
+joined_prefixes: hmbvklšwûū
 prefix_vowels: ĕieaioēā
