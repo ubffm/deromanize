@@ -100,7 +100,7 @@ infrequent:
   ô: א
   s: ש
   t: ט
-  # v: [וו, ו]
+  v: [וו, ו]
   # not sure the following changes are a net positive, but they
   # but they probably will be after caching.
   # ḥ: כ
