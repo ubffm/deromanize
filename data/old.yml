@@ -4,6 +4,7 @@ keys:
     - vowels
     - other
     - vowel errors: 10 
+    - consonant errors: 15
 
   mid:
     - clusters
@@ -98,6 +99,8 @@ infrequent:
   î: א
   ê: א
   ô: א
+
+consonant errors:
   s: ש
   t: ט
   v: [וו, ו]
@@ -164,11 +167,6 @@ final errors:
   âw: [יו, ו]
   āw: ו
   aw: יו
-
-flattened:
-  v: b
-  ḵ: k
-  f: p
 
 # The data structures below are not for use by keygenerators, but for
 # the final decoder.
