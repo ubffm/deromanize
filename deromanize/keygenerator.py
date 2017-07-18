@@ -104,6 +104,7 @@ class Replacement:
 
     @reify
     def keyvalue(self):
+        """a tuple where each character is mapped to it's replacment string."""
         this = tuple(self._keyvalue())
         return this
 
@@ -562,6 +563,9 @@ class KeyGenerator:
                 keys[k] = {'groups': v}
             if isinstance(keys[k]['groups'], str):
                 keys[k]['groups'] = [keys[k]['groups']]
+
+    def __iter__(self):
+        return iter(self.keys)
 
     def keygen(self, keyname):
         """generates a key from the `keys` section of a profile."""
