@@ -129,3 +129,9 @@ broken_clusters:
   kh: "k'h"
   sh: "s'h"
   ts: "t's"
+
+# The data structures below are not for use by keygenerators, but for
+# the final decoder.
+gem_prefixes: [ha, mi, ba, ka, la, she, ṿa]
+joined_prefixes: [h, m, b, v, k, l, sh, ṿ, u]
+prefix_vowels: eiao
