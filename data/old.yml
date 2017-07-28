@@ -17,6 +17,7 @@ keys:
       - final
       - infrequent: 15
       - final errors: 5
+      - consonant errors: 15
     suffix: true
 
   front:
@@ -104,6 +105,7 @@ consonant errors:
   s: ש
   t: ט
   v: [וו, ו]
+  k: ק
   # not sure the following changes are a net positive, but they
   # but they probably will be after caching.
   # ḥ: כ
@@ -170,6 +172,33 @@ final errors:
 
 # The data structures below are not for use by keygenerators, but for
 # the final decoder.
-gem_prefixes: [ha, mi, ba, ka, la, še, wa]
-joined_prefixes: hmbvklšwûū
+gem_prefixes: [ha, mi, ba, va, ka, la, še, wa]
+joined_prefixes: hmbvklšwûūu
 prefix_vowels: ĕieaioēā
+
+to_new:
+  replacements:
+    ḵ: kh
+    q: ḳ
+    š: sh
+    ṣ: ts
+    q: ḳ
+    w: ṿ
+
+  sets:
+    kh: [k, ך]
+    kha: [ka, ך] 
+    ḳ: [k, ק]
+    kah: ka, כה
+    khah: ḵa, כה
+    ʾ: ['', א]
+    ʾ: ["'", א]
+    ʿ: ['', ע]
+    ʿ: ["'", ע]
+    "": ["'", ""]
+    ah: [a, ה]
+    eh: [e, ה]
+    oh: [o, ה]
+    yah: ya, יה
+    ś: [s, ש]
+    ṭ: [t, ט]
