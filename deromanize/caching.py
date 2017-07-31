@@ -38,7 +38,14 @@ def get_combos(rep_key):
         for pair in rep.keyvalue)
 
 
+CACHE_DOC = '''\
+object to track numbers of occurances of certain word pairs
+'''
+
+
 class CacheObject:
+    """
+    """
     def __init__(self, seed=None):
         if isinstance(seed, dict):
             self.data = seed
@@ -76,20 +83,19 @@ class CacheObject:
 
 
 class CacheDB(CacheObject):
-    def __init__(self, connection, seed=None, table='cache'):
+    def __init__(self, connection, seed=None):
         self.con = connection
         self.cur = connection.cursor()
-        self.table = table
         with self:
             self.cur.execute(
                 '''
-                CREATE TABLE IF NOT EXISTS ? (
+                CREATE TABLE IF NOT EXISTS deromcache (
                     source VARCHAR,
                     target VARCHAR,
                     count INTEGER,
                     PRIMARY KEY (source, target)
                 )
-                ''', (table,))
+                ''')
         if isinstance(seed, dict):
             seed = CacheObject(seed)
 
@@ -97,3 +103,42 @@ class CacheDB(CacheObject):
             with self:
                 for row in seed:
                     self.add(*row)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        return self.con.__exit__(type, value, traceback)
+
+    def add(self, source, target, count=1):
+        with self.con:
+            self.cur.execute(
+                '''
+                INSERT OR REPLACE INTO deromcache VALUES (
+                ?,
+                ?,
+                COALESCE(
+                    (SELECT count FROM deromcache
+                        WHERE source = ? AND target = ?),
+                        0) + ?
+                )
+                ''', (source, target, source, target, count))
+
+    def __getitem__(self, value):
+        if isinstance(value, tuple):
+            self.cur.execute(
+                'SELECT count FROM deromcache WHERE source = ? AND target = ?',
+                (value[0], value[1]))
+            return self.cur.fetchall()[0][0]
+
+        self.cur.execute(
+            'SELECT target, count FROM deromcache WHERE source = ?',
+            (value,))
+        return dict(self.cur.fetchall())
+
+    def __iter__(self):
+        self.cur.execute('SELECT * FROM deromcache')
+        return iter(self.cur.fetchall())
+
+    def serializable(self):
+        return CacheObject(self).data
