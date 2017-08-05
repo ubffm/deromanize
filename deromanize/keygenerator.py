@@ -66,9 +66,9 @@ class reify:
 
 
 class Replacement:
-    """a type for holding a replacement and it's weight. A Replacment on its
+    """a type for holding a replacement and it's weight. A Replacement on its
     own doesn't know what it's replacing. It should be an item in a
-    ReplacmentList.
+    ReplacementList.
     """
     def __init__(self, weight: int, value, key=None):
         if isinstance(value, str):
@@ -294,6 +294,8 @@ class ReplacementList(abc.MutableSequence):
         new = type(self)(self.key)
         new.data = self.data.copy()
         return new
+
+    copy = __deepcopy__
 
     def simplify(self):
         return (self.key, [(i.weight, i.value) for i in self])
