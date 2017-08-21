@@ -110,19 +110,20 @@ class CacheObject:
 
 
 class CacheDB(CacheObject):
-    def __init__(self, connection, seed=None):
+    def __init__(self, connection, table_name='deromcache', seed=None):
         self.con = connection
         self.cur = connection.cursor()
+        self.table = table_name
         with self:
             self.cur.execute(
                 '''
-                CREATE TABLE IF NOT EXISTS deromcache (
+                CREATE TABLE IF NOT EXISTS {0} (
                     source VARCHAR,
                     target VARCHAR,
                     count INTEGER,
                     PRIMARY KEY (source, target)
                 )
-                ''')
+                '''.format(table_name))
         if isinstance(seed, dict):
             seed = CacheObject(seed)
 
@@ -140,36 +141,38 @@ class CacheDB(CacheObject):
     def add(self, source, target, count=1):
         self.cur.execute(
             '''
-            INSERT OR REPLACE INTO deromcache VALUES (
+            INSERT OR REPLACE INTO {0} VALUES (
             ?,
             ?,
             COALESCE(
-                (SELECT count FROM deromcache
+                (SELECT count FROM {0}
                     WHERE source = ? AND target = ?),
                     0) + ?
             )
-            ''', (source, target, source, target, count))
+            '''.format(self.table), (source, target, source, target, count))
 
     def __getitem__(self, value):
         if isinstance(value, tuple):
             self.cur.execute(
-                'SELECT count FROM deromcache WHERE source = ? AND target = ?',
-                (value[0], value[1]))
+                'SELECT count FROM {0} WHERE source = ? AND target = ?'.format(
+                    self.table), (value[0], value[1])
+            )
             try:
                 return self.cur.fetchall()[0][0]
             except IndexError:
                 raise KeyError('{!r} not found'.format(value))
 
         self.cur.execute(
-            'SELECT target, count FROM deromcache WHERE source = ?',
-            (value,))
+            'SELECT target, count FROM {0} WHERE source = ?'.format(
+                self.table), (value,)
+        )
         results = self.cur.fetchall()
         if not results:
                 raise KeyError('{!r} not found'.format(value))
         return dict(results)
 
     def __iter__(self):
-        self.cur.execute('SELECT * FROM deromcache')
+        self.cur.execute('SELECT * FROM {0}'.format(self.table))
         return iter(self.cur.fetchall())
 
     def serializable(self):

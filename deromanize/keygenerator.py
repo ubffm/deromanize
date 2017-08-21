@@ -123,6 +123,9 @@ class Replacement:
     def __deepcopy__(self, memo=None):
         return self
 
+    def copy(self):
+        return type(self)(self.weight, (self,), self.key)
+
 
 class StatRep(Replacement):
     """class for representing replacement weights that look like statistics
@@ -467,6 +470,7 @@ class CharSets:
             except KeyError:
                 value = remainder[0]
                 remainder = remainder[1:]
+                index[value] = len(results)
             results.append(value)
         return results, index
 
@@ -662,7 +666,7 @@ class KeyGenerator:
             generated[replist.key] = replist
             for i, rep_group in enumerate(rep_patterns):
                 reps = []
-                for block in rep_group:
+                for j, block in enumerate(rep_group):
                     if isinstance(block, int):
                         try:
                             reps.append(keyparts[pattern_idx[block]])
@@ -674,7 +678,7 @@ class KeyGenerator:
                                 % (block, key_pattern))
                     else:
                         reps.append(ReplacementList(
-                            '', [(i, block)], profile=self.profile))
+                            blocks[j], [(i, block)], profile=self.profile))
                 replacement = add_reps(reps)
                 replist.extend(replacement.data, weight)
 
