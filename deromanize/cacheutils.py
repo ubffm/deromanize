@@ -16,10 +16,14 @@
 #
 # If you do not alter this notice, a recipient may use your version of
 # this file under either the MPL or the EUPL.
+from . import ReplacementKey
 import unicodedata
+from typing import Callable, Dict, Set, Tuple, Iterable, Sequence, Union
+RepKeyValue = Iterable[Tuple[str, str]]
 
 
-def strip_chars(rep_keyvalue, chars=set('ieaou')):
+def strip_chars(rep_keyvalue: RepKeyValue,
+                chars: Set[str]=set('ieaou')) -> RepKeyValue:
     for source, target in rep_keyvalue:
         new = ''
         for c in source:
@@ -31,10 +35,13 @@ def strip_chars(rep_keyvalue, chars=set('ieaou')):
         yield new, target
 
 
-def replacer_maker(simple_replacements, pair_replacements):
+def replacer_maker(
+        simple_replacements: Dict[str, str],
+        pair_replacements: Dict[str, Sequence[str]]
+) -> Callable[[RepKeyValue], RepKeyValue]:
     pair_reps = {tuple(v): k for k, v in pair_replacements.items()}
 
-    def replace(rep_keyvalue):
+    def replace(rep_keyvalue: RepKeyValue) -> RepKeyValue:
         for pair in rep_keyvalue:
             target = pair[1]
             if pair in pair_reps:
@@ -48,7 +55,7 @@ def replacer_maker(simple_replacements, pair_replacements):
     return replace
 
 
-def get_combos(rep_key):
+def get_combos(rep_key: ReplacementKey) -> Set[Tuple[str, str]]:
     return set(
         pair
         for replist in rep_key.values()
@@ -72,10 +79,10 @@ class CacheObject:
             if seed:
                 self.update(seed)
 
-    def __setitem__(self, source, target):
+    def __setitem__(self, source: str, target: str):
         self.add(source, target)
 
-    def add(self, source, target, count=1):
+    def add(self, source: str, target: str, count: int=1) -> None:
         current = self.data.setdefault(source, {}).setdefault(target, 0)
         self.data[source][target] = current + count
 
@@ -83,12 +90,18 @@ class CacheObject:
         for row in matches:
             self.add(*row)
 
-    def __getitem__(self, value):
+    def __getitem__(
+            self, value: Union[str, Tuple[str, str]]
+    ) -> Union[Dict[str, int], int]:
+
         if isinstance(value, tuple):
             return self.data[value[0]][value[1]]
         return self.data[value]
 
-    def get(self, value, default=None):
+    def get(self,
+            value: Union[str, Tuple[str, str]],
+            default=None) -> Union[Dict[str, int], int]:
+
         try:
             return self[value]
         except KeyError:
@@ -99,8 +112,9 @@ class CacheObject:
             for target, count in targets.items():
                 yield source, target, count
 
-    def inverted(self):
-        new = CacheObject()
+    def inverted(self, new=None):
+        if new is None:
+            new = CacheObject()
         for source, target, count in self:
             new.add(target, source, count)
         return new
@@ -138,7 +152,7 @@ class CacheDB(CacheObject):
     def __exit__(self, type, value, traceback):
         return self.con.__exit__(type, value, traceback)
 
-    def add(self, source, target, count=1):
+    def add(self, source: str, target: str, count: int=1) -> None:
         self.cur.execute(
             '''
             INSERT OR REPLACE INTO {0} VALUES (
@@ -151,7 +165,10 @@ class CacheDB(CacheObject):
             )
             '''.format(self.table), (source, target, source, target, count))
 
-    def __getitem__(self, value):
+    def __getitem__(
+            self, value: Union[str, Tuple[str, str]]
+    ) -> Union[Dict[str, int], int]:
+
         if isinstance(value, tuple):
             self.cur.execute(
                 'SELECT count FROM {0} WHERE source = ? AND target = ?'.format(
@@ -175,5 +192,5 @@ class CacheDB(CacheObject):
         self.cur.execute('SELECT * FROM {0}'.format(self.table))
         return iter(self.cur.fetchall())
 
-    def serializable(self):
+    def serializable(self) -> Dict[str, Dict[str, int]]:
         return CacheObject(self).data

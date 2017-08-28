@@ -17,7 +17,7 @@ keys:
       - final
       - infrequent: 15
       - final errors: 5
-      - consonant errors: 15
+      - consonant errors: 20
     suffix: true
 
   front:
@@ -106,6 +106,8 @@ consonant errors:
   t: ט
   v: [וו, ו]
   k: ק
+  ʾ: ע
+  ʿ: א
   # not sure the following changes are a net positive, but they
   # but they probably will be after caching.
   # ḥ: כ

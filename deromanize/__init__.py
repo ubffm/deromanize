@@ -20,6 +20,8 @@ from .keygenerator import (
     KeyGenerator,
     Replacement,
     ReplacementList,
+    ReplacementKey,
+    ReplacementBackKey,
     cached_keys,
     add_reps,
     get_empty_replist)
