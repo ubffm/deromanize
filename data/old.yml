@@ -62,7 +62,7 @@ consonants:
   "'": [א, ע, '']
 
 vowels:
-  î: [י, [10, '']]
+  î: י
   ê: י
   â: א
   ô: ו
@@ -85,10 +85,10 @@ other:
   '"': '״'
 
 clusters:
-  yû: יו
-  ûy: וי
-  yô: יו
-  ôy: וי
+  yû: [יו, [10, ייו]]
+  ûy: [וי, [10, ויי]]
+  yô: [יו, [10, ייו]]
+  ôy: [וי, [10, ויי]]
   îy: [יי, [10, י]]
   yî: [יי, [10, י]]
 
@@ -108,6 +108,7 @@ consonant errors:
   k: ק
   ʾ: ע
   ʿ: א
+  ḥ: כ
   # not sure the following changes are a net positive, but they
   # but they probably will be after caching.
   # ḥ: כ
@@ -124,8 +125,8 @@ vowel errors:
   î: ''
   ē: [י, [30, א]]
   e: י
-  â: ''
   ā: א
+  â: ''
 
 final:
   k: ך
@@ -165,9 +166,9 @@ final errors:
   ē: [י, א]
   ā: א
   ō: ו
-  û: [ו, וא]
-  ô: [ו, וא]
-  î: [י, יא]
+  û: וא
+  ô: וא
+  î: יא
   âw: [יו, ו]
   āw: ו
   aw: יו
@@ -191,6 +192,7 @@ to_new:
     kh: [k, ך]
     kha: [ka, ך] 
     ḳ: [k, ק]
+    kh: [ḥ, כ]
     kah: ka, כה
     khah: ḵa, כה
     ʾ: ['', א]

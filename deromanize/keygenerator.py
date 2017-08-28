@@ -323,7 +323,7 @@ class ReplacementKey(Trie):
         return self.template % self.simplify()
 
     def __setitem__(self, key, value, weight=None):
-        super().__setitem__(key, self._ensurereplist(key, value, weight))
+        super().__setitem__(key, _ensurereplist(key, value, weight))
 
     def getallparts(self, key):
         return RepListList(super().getallparts(key))
@@ -336,8 +336,10 @@ class ReplacementKey(Trie):
         """For each item in in the input dictionary, the coresponding
         replacement list in the trie is extended with the given replacemnts.
         """
+        print('here')
         for k, v in dictionary.items():
-            self.setdefault(k, ReplacementList(k)).extend(v, weight)
+            self.setdefault(k, ReplacementList(k)).extend(
+                _ensurereplist(k, v, weight))
 
     def simplify(self):
         """reduces the tree to a dictionary and all special types to JSON
@@ -393,16 +395,16 @@ class ReplacementKey(Trie):
             child.update(d, weight)
         return child
 
-    @staticmethod
-    def _ensurereplist(key, value, weight=None):
-        """make sure all input values are converted to ReplacementList"""
-        if isinstance(value, ReplacementList):
-            if weight is not None:
-                value.add_weight(weight)
-            return value
-        elif not isinstance(value, list) or isinstance(value[0], int):
-            value = [value]
-        return ReplacementList(key, value, weight)
+
+def _ensurereplist(key, value, weight=None):
+    """make sure all input values are converted to ReplacementList"""
+    if isinstance(value, ReplacementList):
+        if weight is not None:
+            value.add_weight(weight)
+        return value
+    elif not isinstance(value, list) or isinstance(value[0], int):
+        value = [value]
+    return ReplacementList(key, value, weight)
 
 
 class ReplacementBackKey(ReplacementKey, BackTrie):
@@ -624,7 +626,8 @@ class KeyGenerator:
                     profile_updates.append((k, generated))
                 else:
                     self[key_name].setdefault(
-                        k, ReplacementList(k)).extend(v, weight)
+                        k, ReplacementList(k)).extend(
+                            _ensurereplist(k, v, weight))
             for key, generated in profile_updates:
                 del g[key]
                 g.update(generated)
