@@ -92,7 +92,7 @@ def test_suffixtree(profile, suffixtree):
 def test_replacement_addition(rep):
     rep3 = rep[0] + rep[1]
     assert rep3.weight == rep[0].weight + rep[1].weight
-    assert rep3.value == rep[0].value + rep[1].value
+    assert rep3.values == rep[0].values + rep[1].values
 
 
 def test_replacement_list_addition(rep):

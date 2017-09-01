@@ -70,15 +70,32 @@ class Replacement:
     own doesn't know what it's replacing. It should be an item in a
     ReplacementList.
     """
-    def __init__(self, weight: int, value, key=None):
-        if isinstance(value, str):
+    def __init__(self,
+                 weight: int,
+                 value: str=None,
+                 key: str=None,
+                 parts: tuple=None):
+        """A string with some metadata
+
+            weight - an integer to determine how the item will be sorted.
+
+            values - the actual text values of the replacement.
+
+            key - what the values is replacing in the original script.
+                  (optional)
+
+            parts - normally only used by the __add__ method to generate the
+                    kevalue property. Contains the two reps that were added to
+                    create the current one.
+        """
+        if (value and parts) or (value is None and parts is None):
+            raise KeyGeneratorError(
+                "Either values or parts must be supplied, but not both!")
+        if value is not None:
             self.str = value
             self.keyvalue = ((key, value),)
-        if isinstance(value, abc.Sequence):
-            self.valuetree = value
-        else:
-            raise KeyGeneratorError(
-                "The value of a replacement must be a string, not %r" % value)
+        # see the _keyvalue method for info about valuetree
+        self.valuetree = parts or (value,)
         self.weight = weight
         self.key = key
 
@@ -86,8 +103,7 @@ class Replacement:
         """adding one Replacement to another results in them combining their
         weight and string values.
         """
-        return Replacement(self.weight + other.weight,
-                           (self, other))
+        return Replacement(self.weight + other.weight, parts=(self, other))
 
     def __repr__(self):
         return "Replacement({!r}, {!r})".format(self.weight, self.str)
@@ -96,6 +112,16 @@ class Replacement:
         return self.str
 
     def _keyvalue(self):
+        # each valuetree is a tuple. That tuple will either contain a) one
+        # string, if the replacement was directly defined in the profile, or b)
+        # if the replacement was created as the result of addition of two
+        # replacements, the tuple contains (references to) those two
+        # replacments. The valuetrees of those two replacements are traversed
+        # recursively until all the contained strings have been yielded. There
+        # are simpler ways to do this, but saves some work on the intermediate
+        # steps, since a keyvalue doesn't really need to be built at every
+        # phase. This allows it only to be generated when needed by storing
+        # references.
         for val in self.valuetree:
             if isinstance(val, str):
                 yield self.key, val
@@ -105,11 +131,10 @@ class Replacement:
     @reify
     def keyvalue(self):
         """a tuple where each character is mapped to it's replacment string."""
-        this = tuple(self._keyvalue())
-        return this
+        return tuple(self._keyvalue())
 
     @property
-    def value(self):
+    def values(self):
         return tuple(i[1] for i in self.keyvalue)
 
     @property
@@ -118,7 +143,7 @@ class Replacement:
 
     @reify
     def str(self):
-        return ''.join(self.value)
+        return ''.join(self.values)
 
     def __deepcopy__(self, memo=None):
         return self
@@ -132,8 +157,7 @@ class StatRep(Replacement):
     because Kai likes multiplication.
     """
     def __add__(self, other):
-        return StatRep(self.weight * other.weight,
-                       (self.value, other.value))
+        return StatRep(self.weight * other.weight, parts=(self, other))
 
 
 class ReplacementList(abc.MutableSequence):
@@ -301,7 +325,18 @@ class ReplacementList(abc.MutableSequence):
     copy = __deepcopy__
 
     def simplify(self):
-        return (self.key, [(i.weight, i.value) for i in self])
+        return (self.key, [(i.weight, i.values) for i in self])
+
+    def makestat(self):
+        """convert all weights to faux statistical values because my boss told
+        me to.
+        """
+        for rep in self:
+            rep.weight += 1
+        subtotal = sum(r.weight for r in self)
+        total = sum(subtotal-r.weight for r in self)
+        for i, rep in enumerate(self):
+            self.data[i] = StatRep((subtotal-rep.weight)/total, parts=(rep,))
 
 
 class RepListList(list):
@@ -457,7 +492,7 @@ class CharSets:
         """tokenizes a pattern-based replacement definition and returns a
         tuple. the first item in the tuple is a list containg all the parts to
         be used in the replacement. the second item is a dictionary where each
-        the shortcut for each capture group is the key, and the value is the
+        the shortcut for each capture group is the key, and the values is the
         index in the results list.
         """
         results = []
@@ -726,7 +761,7 @@ class KeyGenerator:
     def get_stat_part(self, key, string):
         reps, remainder = self[key].getpart(string)
         max_i = max(i.weight for i in reps) + 1
-        intermediate = [(max_i - i.weight, i.value) for i in reps]
+        intermediate = [(max_i - i.weight, i.values) for i in reps]
         total = sum(i[0] for i in intermediate)
         return (ReplacementList(
             reps.key, [StatRep(i[0]/total, i[1]) for i in intermediate]),
