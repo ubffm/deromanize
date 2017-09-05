@@ -24,10 +24,8 @@ import functools
 import itertools
 import json
 import operator
-import os
-import pathlib
 from collections import abc
-
+from typing import Tuple
 from .trees import Trie, BackTrie, empty
 
 
@@ -74,7 +72,7 @@ class Replacement:
                  weight: int,
                  value: str=None,
                  key: str=None,
-                 parts: tuple=None):
+                 keyvalue: Tuple[Tuple[str, str], ...]=None):
         """A string with some metadata
 
             weight - an integer to determine how the item will be sorted.
@@ -84,18 +82,18 @@ class Replacement:
             key - what the values is replacing in the original script.
                   (optional)
 
-            parts - normally only used by the __add__ method to generate the
-                    kevalue property. Contains the two reps that were added to
-                    create the current one.
+            keyvalue - a tuple of of the keys and values from parent
+                       replacements. Used by the __add__ method
+
         """
-        if (value and parts) or (value is None and parts is None):
+        if (value and keyvalue) or (value is None and keyvalue is None):
             raise KeyGeneratorError(
                 "Either values or parts must be supplied, but not both!")
         if value is not None:
             self.str = value
             self.keyvalue = ((key, value),)
-        # see the _keyvalue method for info about valuetree
-        self.valuetree = parts or (value,)
+        else:
+            self.keyvalue = keyvalue
         self.weight = weight
         self.key = key
 
@@ -103,35 +101,14 @@ class Replacement:
         """adding one Replacement to another results in them combining their
         weight and string values.
         """
-        return Replacement(self.weight + other.weight, parts=(self, other))
+        return Replacement(self.weight + other.weight,
+                           keyvalue=self.keyvalue + other.keyvalue)
 
     def __repr__(self):
         return "Replacement({!r}, {!r})".format(self.weight, self.str)
 
     def __str__(self):
         return self.str
-
-    def _keyvalue(self):
-        # each valuetree is a tuple. That tuple will either contain a) one
-        # string, if the replacement was directly defined in the profile, or b)
-        # if the replacement was created as the result of addition of two
-        # replacements, the tuple contains (references to) those two
-        # replacments. The valuetrees of those two replacements are traversed
-        # recursively until all the contained strings have been yielded. There
-        # are simpler ways to do this, but saves some work on the intermediate
-        # steps, since a keyvalue doesn't really need to be built at every
-        # phase. This allows it only to be generated when needed by storing
-        # references.
-        for val in self.valuetree:
-            if isinstance(val, str):
-                yield self.key, val
-            else:
-                yield from val.keyvalue
-
-    @reify
-    def keyvalue(self):
-        """a tuple where each character is mapped to it's replacment string."""
-        return tuple(self._keyvalue())
 
     @property
     def values(self):
@@ -151,13 +128,17 @@ class Replacement:
     def copy(self):
         return type(self)(self.weight, (self,), self.key)
 
+    def simplify(self):
+        return dict(weight=self.weight, str=self.str, keyvalues=self.keyvalue)
+
 
 class StatRep(Replacement):
     """class for representing replacement weights that look like statistics
     because Kai likes multiplication.
     """
     def __add__(self, other):
-        return StatRep(self.weight * other.weight, parts=(self, other))
+        return StatRep(self.weight * other.weight,
+                       keyvalue=self.keyvalue + other.keyvalue)
 
 
 class ReplacementList(abc.MutableSequence):
@@ -224,26 +205,6 @@ class ReplacementList(abc.MutableSequence):
             else:
                 newparts.append(part)
         return ''.join(newparts)
-
-    @reify
-    def valueparts(self):
-        vp = []
-        for val in self:
-            offset = 0
-            new_vals = []
-            for i, part in enumerate(val.keyvalue):
-                if self.keyparts[i+offset] == part[0]:
-                    new_vals.append(part[1])
-                elif self.keyparts[i+offset+1] == part[0]:
-                    new_vals.extend(('', part[1]))
-                    offset += 1
-                elif self.keyparts[i+offset+1] == val.keyparts[i+1]:
-                    new_vals.append(part[1])
-                else:
-                    raise KeyGeneratorError(
-                        'something went wrong with valueparts.')
-            vp.append(tuple(new_vals))
-        return vp
 
     def __add__(self, other):
         """When two ReplacementList instances are added together, the keys are
@@ -331,12 +292,19 @@ class ReplacementList(abc.MutableSequence):
         """convert all weights to faux statistical values because my boss told
         me to.
         """
+        # for rep in self:
+        #     rep.weight += 1
+        # subtotal = sum(r.weight for r in self)
+        # total = sum(subtotal-r.weight for r in self)
+        # for i, rep in enumerate(self):
+        #     self.data[i] = StatRep((subtotal-rep.weight)/total,
+        #                            keyvalue=rep.keyvalue)
         for rep in self:
-            rep.weight += 1
-        subtotal = sum(r.weight for r in self)
-        total = sum(subtotal-r.weight for r in self)
+            rep.weight = 1/(rep.weight+1)
+        total = sum(r.weight for r in self)
         for i, rep in enumerate(self):
-            self.data[i] = StatRep((subtotal-rep.weight)/total, parts=(rep,))
+            self.data[i] = StatRep((rep.weight)/total,
+                                   keyvalue=rep.keyvalue)
 
 
 class RepListList(list):
@@ -800,8 +768,14 @@ class KeyGenerator:
         file.write(json.dumps(data, *args, **kwargs))
 
 
-def get_empty_replist():
-    return ReplacementList('', [Replacement(0, '', '')])
+# Just another Trie for parsing regex-like capture group syntax for
+# substitutions.
+esc_numbs = Trie()
+for i in range(1, 10):
+    s = str(i)
+    esc_numbs['\\'+s] = i
+    esc_numbs['\\\\'+s] = '\\' + s
+del s, i
 
 
 def add_reps(reps):
@@ -812,53 +786,5 @@ def add_reps(reps):
         return get_empty_replist()
 
 
-def cached_keys(loader, profile_file, cache_path,
-                base_key='base', tree_cache=False):
-    stats = os.stat(profile_file.name)
-    cache_path = pathlib.Path(cache_path)
-    if not cache_path.exists():
-        with cache_path.open('w', encoding='utf8') as cache:
-            cache.write('0')
-    cache_file = cache_path.open(encoding='utf8')
-    cached_mtime = float(cache_file.readline())
-    if stats.st_mtime == cached_mtime:
-        try:
-            return KeyGenerator(json.loads(cache_file.readline()),
-                                base_key=base_key,
-                                mtime=stats.st_mtime,
-                                from_cache=True,
-                                tree_cache=tree_cache)
-            cache_file.close()
-        except json.JSONDecodeError:
-            cache_file.close()
-            os.remove(cache_path)
-            raise
-    else:
-        cache_file.close()
-        key = KeyGenerator(loader(profile_file),
-                           base_key=base_key,
-                           mtime=stats.st_mtime,
-                           tree_cache=tree_cache)
-        pid = os.fork()
-        if pid == 0:
-            cache_writer(cache_path, key)
-            os._exit(0)
-        else:
-            return key
-        # cache_writer(cache_path, key)
-        # return key
-
-
-def cache_writer(path, key):
-    with path.open('w', encoding='utf8') as cache:
-        key.serialize(cache, ensure_ascii=False, separators=(',', ':'))
-
-
-# Just another Trie for parsing regex-like capture group syntax for
-# substitutions.
-esc_numbs = Trie()
-for i in range(1, 10):
-    s = str(i)
-    esc_numbs['\\'+s] = i
-    esc_numbs['\\\\'+s] = '\\' + s
-del s, i
+def get_empty_replist():
+    return ReplacementList('', [Replacement(0, '', '')])
