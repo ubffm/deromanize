@@ -128,8 +128,9 @@ class Replacement:
     def copy(self):
         return type(self)(self.weight, (self,), self.key)
 
-    def simplify(self):
-        return dict(weight=self.weight, str=self.str, keyvalues=self.keyvalue)
+    def serializable(self):
+        return dict(type='Replacement', weight=self.weight,
+                    str=self.str, keyvalue=self.keyvalue)
 
 
 class StatRep(Replacement):
@@ -286,7 +287,11 @@ class ReplacementList(abc.MutableSequence):
     copy = __deepcopy__
 
     def simplify(self):
-        return (self.key, [(i.weight, i.values) for i in self])
+        return (self.key, [(i.weight, str(i)) for i in self])
+
+    def serializable(self):
+        return dict(type='ReplacementList', key=self.key,
+                    data=[r.serializable() for r in self.data])
 
     def makestat(self):
         """convert all weights to faux statistical values because my boss told
@@ -339,7 +344,6 @@ class ReplacementKey(Trie):
         """For each item in in the input dictionary, the coresponding
         replacement list in the trie is extended with the given replacemnts.
         """
-        print('here')
         for k, v in dictionary.items():
             self.setdefault(k, ReplacementList(k)).extend(
                 _ensurereplist(k, v, weight))
@@ -683,8 +687,18 @@ class KeyGenerator:
                                 'pattern %r'
                                 % (block, key_pattern))
                     else:
-                        reps.append(ReplacementList(
-                            blocks[j], [(i, block)], profile=self.profile))
+                        try:
+                            if not isinstance(blocks[j], str):
+                                reps.append(ReplacementList(
+                                    '', [(i, block)],
+                                    profile=self.profile))
+                            else:
+                                reps.append(ReplacementList(
+                                    blocks[j], [(i, block)],
+                                    profile=self.profile))
+                        except IndexError:
+                            reps.append(ReplacementList(
+                                '', [(i, block)], profile=self.profile))
                 replacement = add_reps(reps)
                 replist.extend(replacement.data, weight)
 

@@ -12,6 +12,9 @@ keys:
 
   front: front
 
+  mid:
+    groups: {}
+
 char_sets:
   V: vowels
   D: diphthongs

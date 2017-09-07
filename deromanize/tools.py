@@ -1,6 +1,7 @@
 import json
 import os
 import pathlib
+from collections import abc
 from .keygenerator import KeyGenerator, ReplacementList
 
 
@@ -37,8 +38,6 @@ def cached_keys(loader, profile_file, cache_path,
             os._exit(0)
         else:
             return key
-        # cache_writer(cache_path, key)
-        # return key
 
 
 def cache_writer(path, key):
@@ -82,3 +81,49 @@ def _no_end(keys, word):
 
 def get_self_rep(string):
     return ReplacementList(string, [string])
+
+
+def _flatten(iterable):
+    """return a flat iterator containing all the strings an non-iterables from
+    a nested data structure.
+    """
+    for item in iterable:
+        if isinstance(item, str) or not isinstance(item, abc.Iterable):
+            yield item
+        else:
+            yield from _flatten(item)
+
+
+def stripper_factory(*wordgroups):
+    """create a strip function based on groups of characters *not* to be
+    stripped
+    """
+    chars = {c for string in _flatten(wordgroups)
+             if isinstance(string, str)
+             for c in string}
+
+    def strip(word):
+        """remove non-character symbols from the front of a word. return a tuple
+        containing the junk from the front, and the remainder of the word.
+        """
+        junk = []
+        remainder = ''
+        for i, char in enumerate(word):
+            if char in chars:
+                remainder = word[i:]
+                break
+            junk.append(char)
+
+        return (''.join(junk), remainder) if remainder else ('', ''.join(junk))
+
+    def double_strip(word):
+        """strip non-character symbols off the front and back of a word. return
+        a tuple with (extra stuff from the front, word, extra stuff from the
+        back)
+        """
+        front_junk, remainder = strip(word)
+        back_junk, stripped_word = [
+            i[::-1] for i in strip(remainder[::-1])]
+        return front_junk, stripped_word, back_junk
+
+    return double_strip
