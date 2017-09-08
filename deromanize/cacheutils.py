@@ -188,6 +188,17 @@ class CacheDB(CacheObject):
                 raise KeyError('{!r} not found'.format(value))
         return dict(results)
 
+    def get_target(self, value):
+        self.cur.execute(
+            'SELECT source, count FROM {0} WHERE target ?'.format(
+                self.table), (value,)
+        )
+        results = self.cur.fetchall()
+        if not results:
+                raise KeyError('{!r} not found'.format(value))
+        return dict(results)
+
+
     def __iter__(self):
         self.cur.execute('SELECT * FROM {0}'.format(self.table))
         return iter(self.cur.fetchall())
