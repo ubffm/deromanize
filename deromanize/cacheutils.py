@@ -23,7 +23,7 @@ RepKeyValue = Iterable[Tuple[str, str]]
 
 
 def strip_chars(rep_keyvalue: RepKeyValue,
-                chars: Set[str]=set('ieaou')) -> RepKeyValue:
+                chars: Set[str]=frozenset('ieaou')) -> RepKeyValue:
     for source, target in rep_keyvalue:
         new = ''
         for c in source:
@@ -79,10 +79,8 @@ class CacheObject:
             if seed:
                 self.update(seed)
 
-    def __setitem__(self, source: str, target: str):
-        self.add(source, target)
-
-    def add(self, source: str, target: str, count: int=1) -> None:
+    def add(self, source: str, target: str, count: Union[int, str]=1) -> None:
+        count = int(count)
         current = self.data.setdefault(source, {}).setdefault(target, 0)
         self.data[source][target] = current + count
 
@@ -152,7 +150,8 @@ class CacheDB(CacheObject):
     def __exit__(self, type, value, traceback):
         return self.con.__exit__(type, value, traceback)
 
-    def add(self, source: str, target: str, count: int=1) -> None:
+    def add(self, source: str, target: str, count: Union[int, str]=1) -> None:
+        count = int(count)
         self.cur.execute(
             '''
             INSERT OR REPLACE INTO {0} VALUES (
@@ -197,7 +196,6 @@ class CacheDB(CacheObject):
         if not results:
                 raise KeyError('{!r} not found'.format(value))
         return dict(results)
-
 
     def __iter__(self):
         self.cur.execute('SELECT * FROM {0}'.format(self.table))

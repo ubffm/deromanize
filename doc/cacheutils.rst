@@ -31,7 +31,9 @@ transactional write operations:
   ...     dbcache.add('shalom', 'שלום')
 
 This will modify the database in memory, and commit if the operations
-succeed without error, but role back if there is a failure.
+succeed without error, but role back if there is a failure. The database
+connection is stored in ``cachinstance.con``, and the cursor is
+``cacheinstance.cur``.
 
 Aside from that, they present more or less the same interfaces.
 
@@ -52,9 +54,108 @@ You can also use a count argument to increase it by more than one.
 .. code:: python
 
   >>> cache.add('qore', 'קורה', 5)
+  >>> cache.add('qore', 'קורא', 2)
 
-As syntactic sugar, it's also possible to use assignment syntax.
+Reading Data
+~~~~~~~~~~~~
+You can get data using bracket syntax. Giving a single argument in the
+source script will return a dictionary of all matching words in the
+target language:
 
 .. code:: python
 
-  >>> cache['qore'] = 'קורא'
+  >>> cache['shalom']
+  {'שלום': 1}
+  >>> cache['qore']
+  {'קורה': 5, 'קורא': 2}
+
+Beware of bidi shenanigans in the way the browser renders the above
+dictionaries.
+
+You can also use two arguments in the bracket to get directly to the
+number:
+
+.. code:: python
+
+  >>> cache['qore', 'קורא']
+  2
+
+This is functionally the same as doing ``cache['qore']['קורא']``, the
+only difference is that it only requires one database operation if
+you're using a database backend for the cache.
+
+Iterating on a cache instance returns 3-tuples with ``(source, target,
+number)`` (again, forgive the bidi shenanigans):
+
+.. code:: python
+
+  >>> for i in cache:
+  ...     print(i)
+  ('shalom', 'שלום', 1)
+  ('qore', 'קורה', 5)
+  ('qore', 'קורא', 2)
+
+This is so the data can easily be transfered into a CSV file or other
+tabular format.
+
+Building a Cache from a TSV File
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+A cache instance can also be instantiated from different kinds of
+tabular data. For example, one might use this with a TSV file (though
+note that this is not entirely "safe" if the file contains tabs inside
+of fields):
+
+.. code:: python
+
+  >>> with open('cache.tsv') as cachefile:
+  ...     cache = CacheObject(line.split('\t') for line in cachefile)
+
+Reversing a Cache
+~~~~~~~~~~~~~~~~~
+There may be reason to want to look up words by their form in the target
+script. In this case a cache may be inverted:
+
+.. code:: python
+
+  >>> newcache = cache.inverted()
+
+Be aware that if this is preformed on a database cache, it will create a
+new in memory cache, which could be problematic if the cache is very
+large. Since the database is, well, a database, it has an additional
+method for querying based on the target script, so creating a new,
+in-memory cache is unnecessary):
+
+.. code:: python
+
+  >>> cache.get_target('קורה')
+  {'qore': 2}
+
+This behavior is not available for a CacheObject instance because it
+would require iterating over the whole data structure for each query.
+
+Generating Simplified Caching Formats
+-------------------------------------
+Because of factors like human error in the source script, it is
+sometimes desirable to make simplified or alternate formats that will
+are at least partially tolerant of human error. All of the tools here
+work on the ``.keyvalue`` attribute of a ``deromanize.Replacement``
+instance.
+
+``strip_chars``
+~~~~~~~~~~~~~~~
+The first function, ``strip_chars`` simply strips diacritics off certain
+characters in the source script. The characters should be in a set:
+
+.. code:: python
+
+  >>> newkeyvalues = strip_chars(rep.keyvalue, set('aeiou'))
+
+This will strip diacritics off of any characters that have 'a', 'e', 'i'
+'o' or 'u' as their base character. As it happens, this is the default
+behavior if no ``chars`` argument is provided. Note that the return
+value is a *generator object*, so you may want to turn it into a list if
+you want it to stick around.
+
+``replacer_maker``
+~~~~~~~~~~~~~~~~~~
+``replacer_maker()`` returns a function.
