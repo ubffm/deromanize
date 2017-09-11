@@ -38,7 +38,7 @@ def strip_chars(rep_keyvalue: RepKeyValue,
 def replacer_maker(
         simple_replacements: Dict[str, str],
         pair_replacements: Dict[str, Sequence[str]]
-) -> Callable[[RepKeyValue], RepKeyValue]:
+        ) -> Callable[[RepKeyValue], RepKeyValue]:
     pair_reps = {tuple(v): k for k, v in pair_replacements.items()}
 
     def replace(rep_keyvalue: RepKeyValue) -> RepKeyValue:

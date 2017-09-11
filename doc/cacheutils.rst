@@ -56,6 +56,9 @@ You can also use a count argument to increase it by more than one.
   >>> cache.add('qore', 'קורה', 5)
   >>> cache.add('qore', 'קורא', 2)
 
+(This should look like ``cache.add('source', 'target', number)``, but
+bidi in the browser)
+
 Reading Data
 ~~~~~~~~~~~~
 You can get data using bracket syntax. Giving a single argument in the
@@ -108,7 +111,7 @@ of fields):
 .. code:: python
 
   >>> with open('cache.tsv') as cachefile:
-  ...     cache = CacheObject(line.split('\t') for line in cachefile)
+  ...     cache = CacheObject(line.rstrip().split('\t') for line in cachefile)
 
 Reversing a Cache
 ~~~~~~~~~~~~~~~~~
@@ -150,12 +153,34 @@ characters in the source script. The characters should be in a set:
 
   >>> newkeyvalues = strip_chars(rep.keyvalue, set('aeiou'))
 
-This will strip diacritics off of any characters that have 'a', 'e', 'i'
-'o' or 'u' as their base character. As it happens, this is the default
-behavior if no ``chars`` argument is provided. Note that the return
-value is a *generator object*, so you may want to turn it into a list if
-you want it to stick around.
+This will strip diacritics off of any characters that have 'a', 'e',
+'i', 'o' or 'u' as their base character. As it happens, this is the
+default behavior if no ``chars`` argument is provided. Note that the
+return value is a *generator object*, so you may want to turn it into a
+list if you want it to stick around.
 
 ``replacer_maker``
 ~~~~~~~~~~~~~~~~~~
-``replacer_maker()`` returns a function.
+``replacer_maker()`` is a factory for token replacement functions. The
+first argument, ``simple_replacements`` is simply dictionary of tokens
+that need to be converted into another character. For example, In the
+old transliteration standard used in our library 'שׁ' is transliterated
+as *š*, but in the new standard (Library of Congress) the same consonant
+is represented as ``sh``, so one of the items in the
+``simple_replacements`` dictionary would be ``'š': 'sh'``, so each token
+of the first would be replaced with the second.
+
+The second parameter, ``pair_replacements`` can be used to change tokens
+that are ambiguous in the transliteration standard, but are more clear
+once one sees the proper version in the original script.
+
+For example, in the old transliteration a final *segol-he'* is simply
+*e*, but is *eh* in LOC. However, if we have the letter *ה* matched to
+the consonant *e*, we know it should be *eh* after it is converted. In
+this case, the dictionary item will look like this ``'eh': ['e', 'ה']``
+that is the key is the target form and the value is the two correlated
+symbols that represent should be converted into it.
+
+The output of ``replacer_maker`` is a function that will take
+``Replacement.keyvalue`` attributes and spit out a new one with the
+required replacements complete.
