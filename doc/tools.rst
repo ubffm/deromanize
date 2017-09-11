@@ -99,13 +99,12 @@ just read the code:
 ----------------------
 Python's strings have a ``.strip()`` method. However, they take
 characters as arguments and strip off all of those characters from the
-beginning and end of the string. We'll call this "exclusive stripping",
-since it exclusively strips characters in the string you give it.
+beginning and end of the string.
 
 The ``stripper_factory`` builds functions that strip every character
-besides the ones you pass into it. This is useful for stripping off all
-characters that shouldn't be transliterated, especially punctuation,
-numbers, etc.
+besides the ones you pass into it, (i.e. the opposite of the strip
+function. This is useful for stripping off all characters that shouldn't
+be transliterated, especially punctuation, numbers, etc.
 
 Also because I'm lazy, you can give it as many iterables as you want,
 and they can be nested, and it will go through all of them recursively
