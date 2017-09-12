@@ -24,6 +24,10 @@ RepKeyValue = Iterable[Tuple[str, str]]
 
 def strip_chars(rep_keyvalue: RepKeyValue,
                 chars: Set[str]=frozenset('ieaou')) -> RepKeyValue:
+    """strips all diacritics off of certain chars in a Replacement.keyvalue.
+    Returns the update keyvalue.
+    """
+    new_keyvalue = []
     for source, target in rep_keyvalue:
         new = ''
         for c in source:
@@ -32,7 +36,8 @@ def strip_chars(rep_keyvalue: RepKeyValue,
                 new += decomposed[0]
             else:
                 new += c
-        yield new, target
+        new_keyvalue.append((new, target))
+    return new_keyvalue
 
 
 def replacer_maker(
@@ -42,15 +47,17 @@ def replacer_maker(
     pair_reps = {tuple(v): k for k, v in pair_replacements.items()}
 
     def replace(rep_keyvalue: RepKeyValue) -> RepKeyValue:
+        new_keyvalue = []
         for pair in rep_keyvalue:
             target = pair[1]
             if pair in pair_reps:
-                yield pair_reps[pair], target
+                new_keyvalue.append((pair_reps[pair], target))
             else:
                 new = pair[0]
                 for k, v in simple_replacements.items():
                     new = new.replace(k, v)
-                yield new, target
+                new_keyvalue.append((new, target))
+        return new_keyvalue
 
     return replace
 
@@ -63,13 +70,9 @@ def get_combos(rep_key: ReplacementKey) -> Set[Tuple[str, str]]:
         for pair in rep.keyvalue)
 
 
-CACHE_DOC = '''\
-object to track numbers of occurances of certain word pairs
-'''
-
-
 class CacheObject:
-    """
+    """creates cache objects to track numbers of occurances of certain word
+    pairs
     """
     def __init__(self, seed=None):
         if isinstance(seed, dict):
