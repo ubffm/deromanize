@@ -263,9 +263,9 @@ class ReplacementList(abc.MutableSequence):
             string += '\n{:2} {}'.format(r.weight, r)
         return string
 
-    def sort(self, reverse=False, key=lambda rep: rep.weight, *args, **kwargs):
+    def sort(self, reverse=False, key=lambda rep: rep.weight):
         """sort items by weight"""
-        self.data.sort(key=key, reverse=reverse, *args, **kwargs)
+        self.data.sort(key=key, reverse=reverse)
 
     def prune(self, reverse=False):
         """sort items and prune repeats"""
