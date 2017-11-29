@@ -6,7 +6,7 @@ try:
 except ImportError:
     yaml = None
 
-PATH_DIRS = [Path()/'.derom-conf.yml',
+CFG_PATHS = [Path()/'.deromanize.yml',
              Path.home()/'.config'/'derom'/'config.yml']
 PROJ_PATH = Path(__file__).parents[1]
 
@@ -22,20 +22,27 @@ class Config:
         self.user_conf = self.find_configs()
         self.schemas = get_schemas(self.user_conf)
 
-    def from_schema(self, schema_name):
-        return KeyGenerator(self.loader(self.schemas[schema_name]))
+    def from_schema(self, schema_name, *args, **kwargs):
+        return KeyGenerator(self.get_profile(schema_name),
+                            *args, **kwargs)
+
+    def get_profile(self, schema_name):
+        return self.loader(self.schemas[schema_name])
 
     def find_configs(self):
         """locate the yaml config file and return it deserialized."""
         if self.path:
             path = Path(self.path)
         else:
-            for path in PATH_DIRS:
+            for path in CFG_PATHS:
                 if path.exists():
                     break
             else:
                 return {}
         return self.loader(path)
+
+    def __getitem__(self, key):
+        return self.user_conf[key]
 
 
 def get_schemas(user_conf: dict):

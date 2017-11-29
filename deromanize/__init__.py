@@ -30,3 +30,4 @@ from .tools import (
     get_self_rep,
     stripper_factory)
 from . import cacheutils
+from .config import Config, ConfigError
