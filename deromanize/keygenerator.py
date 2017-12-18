@@ -169,10 +169,10 @@ class ReplacementList(abc.MutableSequence):
         """Make sure any input is converted into a Replacement."""
         if isinstance(value, Replacement):
             return value
-        elif isinstance(value, (tuple, list)) and len(value) == 2:
-            return Replacement(*value, key=self.key)
         elif isinstance(value, str):
             return Replacement(weight, value, key=self.key)
+        elif isinstance(value, abc.Sequence) and len(value) == 2:
+            return Replacement(*value, key=self.key)
         else:
             raise KeyGeneratorError(
                 '%s is not supported for insertion in ReplacementList'
