@@ -95,7 +95,7 @@ class Replacement:
         else:
             self.keyvalue = keyvalue
         self.weight = weight
-        self.key = key
+        self._key = key
 
     def __add__(self, other):
         """adding one Replacement to another results in them combining their
@@ -103,6 +103,9 @@ class Replacement:
         """
         return Replacement(self.weight + other.weight,
                            keyvalue=self.keyvalue + other.keyvalue)
+
+    def __bool__(self):
+        return self.keyvalue != (('', ''),)
 
     def __repr__(self):
         return "Replacement({!r}, {!r})".format(self.weight, self.str)
@@ -118,6 +121,10 @@ class Replacement:
     def keyparts(self):
         return tuple(i[0] for i in self.keyvalue)
 
+    @property
+    def key(self):
+        return self._key or ''.join(self.keyparts)
+
     @reify
     def str(self):
         return ''.join(self.values)
@@ -126,7 +133,7 @@ class Replacement:
         return self
 
     def copy(self):
-        return type(self)(self.weight, (self,), self.key)
+        return type(self)(self.weight, keyvalue=self.keyvalue)
 
     def serializable(self):
         return dict(type='Replacement', weight=self.weight,
@@ -175,8 +182,8 @@ class ReplacementList(abc.MutableSequence):
             return Replacement(*value, key=self.key)
         else:
             raise KeyGeneratorError(
-                '%s is not supported for insertion in ReplacementList'
-                % type(value))
+                '%s is not supported for insertion in ReplacementList. Got %r'
+                % (type(value), value))
 
     def _keyparts(self):
         for part in self.keytree:
@@ -231,6 +238,11 @@ class ReplacementList(abc.MutableSequence):
     def __len__(self):
         return len(self.data)
 
+    def __bool__(self):
+        if len(self.data) == 1:
+            return bool(self[0])
+        return True
+
     def insert(self, i, value):
         self.data.insert(i, self._prep_value(i, value))
 
@@ -284,7 +296,10 @@ class ReplacementList(abc.MutableSequence):
         new.data = self.data.copy()
         return new
 
-    copy = __deepcopy__
+    def copy(self):
+        new = type(self)(self.key)
+        new.data = [i.copy() for i in self.data]
+        return new
 
     def simplify(self):
         return (self.key, [(i.weight, str(i)) for i in self])
