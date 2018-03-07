@@ -21,26 +21,6 @@ import copy
 from collections import abc
 
 
-class Empty:
-    """Just a silly class that doesn't do anything but hold empty
-    places. That's probably None's job, but, eh, since None is a valid value
-    that could be in a dictionary, decided to whip up something else.
-    """
-    def __repr__(self):
-        return "empty"
-
-    def __eq__(self, other):
-        return isinstance(other, Empty)
-
-    def __copy__(self, *args):
-        return self
-
-    __deepcopy__ = __copy__
-
-
-empty = Empty()
-
-
 class Trie(abc.MutableMapping):
     """a prefix tree for dealing with transliteration standards with digraphs.
     This could just be a dictionary if there weren't digraphs in
@@ -59,7 +39,7 @@ class Trie(abc.MutableMapping):
         the same way it is used to create a dictionary (argument should be a
         dictionary or an iterable with two-tuples.
         """
-        self.root = [empty, {}]
+        self.root = [..., {}]
         self._len = 0
         if initializer is not None:
             self.update(initializer)
@@ -67,14 +47,14 @@ class Trie(abc.MutableMapping):
     def __bool__(self):
         return bool(self.root[1])
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value):
         """follow (and generate, if needed) all neccesary intermediate nodes to
         create a new endpoint.
         """
         node = self.root
         for char in key:
-            node = node[1].setdefault(char, [empty, {}])
-        if node[0] is empty:
+            node = node[1].setdefault(char, [..., {}])
+        if node[0] is ...:
             self._len += 1
         node[0] = value
 
@@ -108,20 +88,20 @@ class Trie(abc.MutableMapping):
 
     def __getitem__(self, key):
         node = self._getnode(key)
-        if node[0] is empty:
+        if node[0] is ...:
             raise KeyError(key)
         return node[0]
 
     def __delitem__(self, key):
         node, stack = self.getstack(key)
-        if node[0] is empty:
+        if node[0] is ...:
             raise KeyError(key)
         self._len -= 1
-        node[0] = empty
+        node[0] = ...
 
         for parent, key in reversed(stack):
             node = parent[1][key]
-            if node[0] is empty and not node[1]:
+            if node[0] is ... and not node[1]:
                 del parent[1][key]
             else:
                 break
@@ -158,7 +138,7 @@ class Trie(abc.MutableMapping):
         """
         for key, node in topnode[1].items():
             newkeypart = keypart + key
-            if node[0] is not empty:
+            if node[0] is not ...:
                 yield (newkeypart, node[0])
             yield from self._itemize(node, newkeypart)
 
@@ -202,21 +182,21 @@ class Trie(abc.MutableMapping):
         containing the value of the node and the remainder of the key.
         """
         node = self.root
-        value = empty
+        value = ...
         remainder = key
         for i, char in enumerate(key):
             try:
                 node = node[1][char]
             except KeyError:
-                if value is empty:
+                if value is ...:
                     raise
                 else:
                     return value, remainder
 
-            if node[0] is not empty:
+            if node[0] is not ...:
                 value, remainder = node[0], key[i+1:]
 
-        if value is empty:
+        if value is ...:
             raise KeyError(key)
         else:
             return value, remainder
@@ -238,7 +218,7 @@ class Trie(abc.MutableMapping):
         return root
 
     def _put_none(self, node):
-        if node[0] is empty:
+        if node[0] is ...:
             node[0] = None
         for node in node[1].values():
             self._put_none(node)

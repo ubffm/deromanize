@@ -18,7 +18,7 @@ class ConfigError:
 class Config:
     def __init__(self, path=None, loader=None):
         self.path = path
-        self.loader = loader or (lambda path: yaml.safe_load(open(path)))
+        self.loader = loader or (lambda path: yaml.safe_load(open(str(path))))
         self.user_conf = self.find_configs()
         self.schemas = get_schemas(self.user_conf)
 

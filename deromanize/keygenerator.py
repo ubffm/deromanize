@@ -26,7 +26,7 @@ import json
 import operator
 from collections import abc
 from typing import Tuple
-from .trees import Trie, BackTrie, empty
+from .trees import Trie, BackTrie
 
 
 class KeyGeneratorError(Exception):
@@ -327,10 +327,17 @@ class ReplacementList(abc.MutableSequence):
                                    keyvalue=rep.keyvalue)
 
 
+def add_reps(reps):
+    """Add together a bunch of ReplacementLists"""
+    try:
+        return functools.reduce(operator.add, reps)
+    except TypeError:
+        return get_empty_replist()
+
+
 class RepListList(list):
     """I'm to lazy to type deromanize.add_reps"""
-    def add(self):
-        return add_reps(self)
+    add = add_reps
 
     def __repr__(self):
         return 'RepListList(%r)' % [i.simplify() for i in self]
@@ -381,7 +388,7 @@ class ReplacementKey(Trie):
 
     @classmethod
     def _ts_walk(cls, node):
-        if node[0] is empty:
+        if node[0] is ...:
             node[0] = None
         else:
             node[0] = (node[0].key, [(i.weight, str(i)) for i in node[0].data])
@@ -398,7 +405,7 @@ class ReplacementKey(Trie):
     @classmethod
     def _te_walk(cls, node, key=None):
         if node[0] is None:
-            node[0] = empty
+            node[0] = ...
         else:
             node[0] = cls._ensurereplist(node[0][0], node[0][1])
         for k, newnode in node[1].items():
@@ -805,14 +812,6 @@ for i in range(1, 10):
     esc_numbs['\\'+s] = i
     esc_numbs['\\\\'+s] = '\\' + s
 del s, i
-
-
-def add_reps(reps):
-    """Add together a bunch of ReplacementLists"""
-    try:
-        return functools.reduce(operator.add, reps)
-    except TypeError:
-        return get_empty_replist()
 
 
 def get_empty_replist():
