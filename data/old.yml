@@ -3,6 +3,7 @@ keys:
     - consonants
     - vowels
     - other
+    - bad_geresh
     - vowel errors: 10 
     - consonant errors: 15
 
@@ -15,6 +16,7 @@ keys:
     groups:
       - clusters
       - final
+      - final_bad_geresh
       - infrequent: 15
       - final errors: 5
       - consonant errors: 20
@@ -38,11 +40,15 @@ consonants:
   g: ג
   ǧ: ג׳
   d: ד
+  ḏ: ד׳
   h: ה
   w: [וו, ו]
   z: ז
+  ž: ז׳
   ḥ: ח
+  ḫ: ח׳
   ṭ: ט
+  ẓ: ט׳
   y: [יי, י]
   j: [יי, י]
   k: כ
@@ -52,15 +58,19 @@ consonants:
   n: נ
   s: ס
   ʿ: ע
+  ġ: ע׳
   p: פ
   f: פ
   ṣ: צ
+  č: צ׳
+  ḍ: צ׳
   q: ק
   r: ר
   ś: ש
   š: ש
   t: ת
-  "'": [א, ע, '']
+  ṯ: ת׳
+  "'": [א, ע, '', ׳]
 
 vowels:
   î: י
@@ -83,6 +93,19 @@ vowels:
   ŏ: ''
 
 other:
+  '"': ״
+
+bad_geresh:
+  ǧ: ג'
+  ḏ: ד'
+  ž: ז'
+  ḫ: ח'
+  ẓ: ט'
+  ġ: ע'
+  č: צ'
+  ḍ: צ'
+  ṯ: ת'
+  "'": [א, ע, '', "'"]
   '"': '"'
 
 clusters:
@@ -142,6 +165,8 @@ final:
   n: ן
   f: ף
   ṣ: ץ
+  č: ץ׳
+  ḍ: ץ׳
   w: ו
   i: י
   î: י
@@ -161,7 +186,12 @@ final:
   yā: יה
   jā: יה
   îm/ôt: ים/ות
+
   # iCEV: [י\1\2, \1\2]
+final_bad_geresh:
+  č: ץ'
+  ḍ: ץ'
+  "'": ["'", ע, א]
 
 final errors:
   e: [י, א]
