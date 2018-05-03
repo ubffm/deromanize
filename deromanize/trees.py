@@ -61,7 +61,7 @@ class Trie(abc.MutableMapping):
     def __repr__(self):
         return self.template % self.dict()
 
-    def _getnode(self, key):
+    def _getnode(self, key: str):
         """get a node out of the internal prefix tree. An implementation
         detail.
         """
@@ -70,7 +70,7 @@ class Trie(abc.MutableMapping):
             node = node[1][char]
         return node
 
-    def getstack(self, key):
+    def getstack(self, key: str):
         """given a key, return a tuple containing the final node along with a
         stack of all the parent nodes (starting from the root). This stack is a
         list of tuples where the first item is the node itself and the second
@@ -86,13 +86,13 @@ class Trie(abc.MutableMapping):
             node = node[1][char]
         return node, stack
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str):
         node = self._getnode(key)
         if node[0] is ...:
             raise KeyError(key)
         return node[0]
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: str):
         node, stack = self.getstack(key)
         if node[0] is ...:
             raise KeyError(key)
@@ -106,7 +106,7 @@ class Trie(abc.MutableMapping):
             else:
                 break
 
-    def containsnode(self, key):
+    def containsnode(self, key: str):
         """check if a node on the tree exists without regard for whether it
         contains anything.
         """
@@ -116,7 +116,7 @@ class Trie(abc.MutableMapping):
             return False
         return True
 
-    def items(self, prefix=None):
+    def items(self, prefix: str = None):
         """return a generator yielding all keys and values with valid endpoints.
         "prefix" argument is provided, yield all keys and values where the key
         starts with "prefix".
@@ -132,7 +132,7 @@ class Trie(abc.MutableMapping):
             keypart = ''
         return self._itemize(topnode, keypart)
 
-    def _itemize(self, topnode, keypart=''):
+    def _itemize(self, topnode, keypart: str = ''):
         """traverse the tree recursively and get spit out the non-empty nodes
         along the way.
         """
@@ -142,7 +142,7 @@ class Trie(abc.MutableMapping):
                 yield (newkeypart, node[0])
             yield from self._itemize(node, newkeypart)
 
-    def keys(self, prefix=None):
+    def keys(self, prefix: str = None):
         """Return an generator (not a dict view!) with all keys. optional
         `prefix` argument limits results to keys beginning with the given
         prefix.
@@ -151,7 +151,7 @@ class Trie(abc.MutableMapping):
 
     __iter__ = keys
 
-    def values(self, prefix=None):
+    def values(self, prefix: str = None):
         """Return an generator (not a dict view!) with all values. optional
         `prefix` argument limits results to keys beginning with the given
         prefix.
@@ -171,13 +171,13 @@ class Trie(abc.MutableMapping):
         new._len = self._len
         return new
 
-    def dict(self, prefix=None):
+    def dict(self, prefix: str = None):
         """return a dictionary from the prefix tree. optional `prefix` argument
         limits results to keys beginning with the given prefix.
         """
         return dict(self.items(prefix))
 
-    def getpart(self, key):
+    def getpart(self, key: str):
         """takes a key and matches as much of it as possible. returns a tuple
         containing the value of the node and the remainder of the key.
         """
@@ -201,7 +201,7 @@ class Trie(abc.MutableMapping):
         else:
             return value, remainder
 
-    def getallparts(self, key):
+    def getallparts(self, key: str):
         """loop over a string, splitting the input string up by longest
         possible matches.
         """
@@ -230,21 +230,21 @@ class BackTrie(Trie):
     """
     template = 'BackTrie(%r)'
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value):
         super().__setitem__(key[::-1], value)
 
-    def _getnode(self, key):
+    def _getnode(self, key: str):
         return super()._getnode(key[::-1])
 
-    def getstack(self, key):
-        return super._getstack(key[::-1])
+    def getstack(self, key: str):
+        return super().getstack(key[::-1])
 
-    def getpart(self, key):
+    def getpart(self, key: str):
         value, remainder = super().getpart(key[::-1])
         return value, remainder[::-1]
 
-    def items(self, key=None):
+    def items(self, key: str = None):
         return ((k[::-1], v) for k, v in super().items(key))
 
-    def getallparts(self, key):
+    def getallparts(self, key: str):
         return super().getallparts(key)[::-1]

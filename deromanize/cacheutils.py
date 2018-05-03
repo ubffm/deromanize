@@ -23,7 +23,7 @@ RepKeyValue = Iterable[Tuple[str, str]]
 
 
 def strip_chars(rep_keyvalue: RepKeyValue,
-                chars: Set[str]=frozenset('ieaou')) -> RepKeyValue:
+                chars: Set[str] = set('ieaou')) -> RepKeyValue:
     """strips all diacritics off of certain chars in a Replacement.keyvalue.
     Returns the update keyvalue.
     """

@@ -25,7 +25,7 @@ import itertools
 import json
 import operator
 from collections import abc
-from typing import Tuple
+from typing import Tuple, List
 from .trees import Trie, BackTrie
 
 
@@ -68,11 +68,8 @@ class Replacement:
     own doesn't know what it's replacing. It should be an item in a
     ReplacementList.
     """
-    def __init__(self,
-                 weight: int,
-                 value: str=None,
-                 key: str=None,
-                 keyvalue: Tuple[Tuple[str, str], ...]=None):
+    def __init__(self, weight: int, value: str = None, key: str = None,
+                 keyvalue: Tuple[Tuple[str, str], ...] = None) -> None:
         """A string with some metadata
 
             weight - an integer to determine how the item will be sorted.
@@ -89,11 +86,11 @@ class Replacement:
         if (value and keyvalue) or (value is None and keyvalue is None):
             raise KeyGeneratorError(
                 "Either values or parts must be supplied, but not both!")
-        if value is not None:
+        elif keyvalue is not None:
+            self.keyvalue = keyvalue
+        elif value is not None and key is not None:
             self.str = value
             self.keyvalue = ((key, value),)
-        else:
-            self.keyvalue = keyvalue
         self.weight = weight
         self._key = key
 
@@ -155,8 +152,8 @@ class ReplacementList(abc.MutableSequence):
     """
     reptype = Replacement
 
-    def __init__(self, key=None, values: list=None, weight=None,
-                 parents=None, profile=None):
+    def __init__(self, key: str = None, values: list = None,
+                 weight: int = None, parents=None, profile=None) -> None:
         self.profile = profile or {}
         if key is not None:
             self.key = key
@@ -168,18 +165,18 @@ class ReplacementList(abc.MutableSequence):
             self.keyparts = (key,)
         else:
             self.keytree = parents
-        self.data = []
+        self.data: List[Replacement] = []
         if values is not None:
             self.extend(values, weight)
 
-    def _prep_value(self, weight, value):
+    def _prep_value(self, weight: int, value) -> Replacement:
         """Make sure any input is converted into a Replacement."""
         if isinstance(value, Replacement):
             return value
         elif isinstance(value, str):
             return Replacement(weight, value, key=self.key)
         elif isinstance(value, abc.Sequence) and len(value) == 2:
-            return Replacement(*value, key=self.key)
+            return Replacement(value[0], value[1], key=self.key)
         else:
             raise KeyGeneratorError(
                 '%s is not supported for insertion in ReplacementList. Got %r'
