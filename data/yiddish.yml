@@ -1,0 +1,94 @@
+keys:
+  base:
+    - consonants
+    - vowels
+
+  mid: []
+
+  end:
+    groups:
+      - final
+      - consonant errors: 20
+    suffix: true
+
+  front:
+    - beginning
+
+consonants:
+  ʾ: א
+  b: ב
+  v: ב
+  g: ג
+  d: ד
+  h: ה
+  w: [וו, װ]
+  z: ז
+  ḥ: ח
+  ṭ: ט
+  y: [יי, י, ײ]
+  j: [יי, י, ײ]
+  k: [ק, כ]
+  ḵ: כ
+  ch: כ
+  l: ל
+  m: מ
+  n: נ
+  s: [ס, ת]
+  ʿ: ע
+  p: [פּ, פ]
+  f: פ
+  ṣ: צ
+  tz: צ
+  q: ק
+  r: ר
+  ś: ש
+  š: ש
+  sch: ש
+  t: ת
+  s̱: ת
+
+vowels:
+  i: [י, ו]
+  e: ע
+  a: [א]
+  o: [אָ, וֹ]
+  u: [ו, אָ]
+  û: [ו, אָ]
+  oi: [וי, ווי, וֹ] 
+  oy: [וי, ווי, וֹ] 
+  eu: [וי, ווי] 
+  au: [וי] 
+  ei: יי
+  ey: יי
+  ai: ײַ
+
+consonant errors:
+  s: ש
+  t: ט
+  v: [וו, ו]
+  ʾ: ע
+  ʿ: א
+  ḥ: כ
+
+beginning:
+  y: י
+  j: י
+  w: [וו, ו]
+  i: [אי, או]
+  o: [אָ, אוֹ]
+  u: [או, אָ]
+  oi: [אוי, אוֹ] 
+  eu: [אוי] 
+  au: [אוי] 
+  ei: איי
+  ai: אײַ
+
+
+final:
+  k: [ק, ך]
+  ḵ: ך
+  m: ם
+  n: ן
+  f: ף
+  ṣ: ץ
+  tz: ץ
