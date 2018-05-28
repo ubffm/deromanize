@@ -165,7 +165,8 @@ class ReplacementList(abc.MutableSequence):
             self.keyparts = (key,)
         else:
             self.keytree = parents
-        self.data: List[Replacement] = []
+        # self.data: List[Replacement] = []
+        self.data = []
         if values is not None:
             self.extend(values, weight)
 
