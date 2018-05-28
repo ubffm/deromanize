@@ -49,9 +49,11 @@ class Config:
 
 
 def get_schemas(user_conf: dict) -> Dict[str, Path]:
-    u_schemas: Union[list, str, None] = user_conf.get('schemas')
+    # u_schemas: Union[list, str, None] = user_conf.get('schemas')
+    u_schemas = user_conf.get('schemas')
     if u_schemas is None:
-        schema_paths: Iterable[Path] = (PROJ_PATH/'data').glob('*.yml')
+        # schema_paths: Iterable[Path] = (PROJ_PATH/'data').glob('*.yml')
+        schema_paths = (PROJ_PATH/'data').glob('*.yml')
     elif isinstance(u_schemas, list):
         schema_paths = map(Path, u_schemas)
     elif u_schemas.endswith('.yml'):
