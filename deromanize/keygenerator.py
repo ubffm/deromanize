@@ -25,7 +25,7 @@ import itertools
 import json
 import operator
 from collections import abc
-from typing import Tuple, List
+from typing import Tuple
 from .trees import Trie, BackTrie
 
 
@@ -310,10 +310,10 @@ class ReplacementList(abc.MutableSequence):
         """convert all weights to faux statistical values because my boss told
         me to.
         """
-        temp_weights = [1/(rep.weight+1) for rep in self]
-        total = sum(temp_weights)
+        reciprocals = [1/(rep.weight+1) for rep in self]
+        total = sum(reciprocals)
         for i, rep in enumerate(self):
-            self.data[i] = StatRep(temp_weights[i] / total,
+            self.data[i] = StatRep(reciprocals[i] / total,
                                    keyvalue=rep.keyvalue)
 
 
