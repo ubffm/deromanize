@@ -1,7 +1,8 @@
 from pathlib import Path
 from types import ModuleType
-from typing import Dict, Iterable, Union
+from typing import Dict
 from . import KeyGenerator
+from .cacheutils import DBWrapper
 
 
 try:
@@ -46,6 +47,19 @@ class Config:
 
     def __getitem__(self, key):
         return self.user_conf[key]
+
+    def get_cache_db(self, db_path=None):
+        if not db_path:
+            db_path = self['cache_db']
+        path = Path(db_path).expanduser()
+        if path.parent.exists():
+            return DBWrapper('sqlite:///' + str(path))
+        else:
+            return DBWrapper(str(path))
+
+    def get_caches(self, *cache_names, db_path=None):
+        db = self.get_cache_db(db_path)
+        return tuple(db.mkcache(name) for name in cache_names)
 
 
 def get_schemas(user_conf: dict) -> Dict[str, Path]:
