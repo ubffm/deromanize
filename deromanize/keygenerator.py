@@ -310,10 +310,10 @@ class ReplacementList(abc.MutableSequence):
         """convert all weights to faux statistical values because my boss told
         me to.
         """
-        temp_weights = [1/(r.weight+1) for rep in self]
+        temp_weights = [1/(rep.weight+1) for rep in self]
         total = sum(temp_weights)
-        for i, temp_weight in enumerate(temp_weights):
-            self.data[i] = StatRep(temp_weight / total,
+        for i, rep in enumerate(self):
+            self.data[i] = StatRep(temp_weights[i] / total,
                                    keyvalue=rep.keyvalue)
 
 
