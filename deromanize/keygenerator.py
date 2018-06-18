@@ -313,7 +313,7 @@ class ReplacementList(abc.MutableSequence):
         temp_weights = [1/(r.weight+1) for rep in self]
         total = sum(temp_weights)
         for i, temp_weight in enumerate(temp_weights):
-            self.data[i] = StatRep((temp_weight)/total,
+            self.data[i] = StatRep(temp_weight / total,
                                    keyvalue=rep.keyvalue)
 
 
