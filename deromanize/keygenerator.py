@@ -23,7 +23,6 @@ import copy
 import functools
 import itertools
 import json
-import operator
 from collections import abc
 from typing import Tuple
 from .trees import Trie, BackTrie
