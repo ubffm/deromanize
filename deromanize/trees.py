@@ -31,6 +31,7 @@ class Trie(abc.MutableMapping):
     methods for use with transliteration stuff.
     """
     template = 'Trie(%r)'
+    __slots__ = 'root', '_len'
 
     def __init__(self, initializer=None):
         """Trie([initializer])
@@ -228,6 +229,7 @@ class BackTrie(Trie):
     """Subclass of Trie that takes it from the back. I used to call this a
     suffix tree, but I've since learned that that is incorrect.
     """
+    __slots__ = ()
     template = 'BackTrie(%r)'
 
     def __setitem__(self, key: str, value):

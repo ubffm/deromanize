@@ -16,7 +16,6 @@
 #
 # If you do not alter this notice, a recipient may use your version of
 # this file under either the MPL or the EUPL.
-from . import ReplacementKey
 import unicodedata
 from typing import Callable, Dict, Set, Tuple, Iterable, Sequence, Union
 import sqlalchemy as sa
@@ -74,7 +73,7 @@ def make_cache_processor(cache, converter=None):
     return wrapper
 
 
-def get_combos(rep_key: ReplacementKey) -> Set[Tuple[str, str]]:
+def get_combos(rep_key) -> Set[Tuple[str, str]]:
     return set(
         pair
         for replist in rep_key.values()

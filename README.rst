@@ -560,7 +560,7 @@ write k instead of ḳ, we can generate something like this:
 .. code:: python
 
   >>> shuk = 'shuk' # oops! should be "shuḳ"
-  >>> shuk = add_reps(keys['base'].getallparts(shuk)
+  >>> shuk = add_reps(keys['base'].getallparts(shuk))
   print(shuk)
   shuk:
    0 שוכ

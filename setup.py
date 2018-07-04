@@ -11,4 +11,5 @@ setup(
                 'scripts',
     long_description=open('README.rst').read(),
     packages=['deromanize'],
+    requires=['libaaron']
 )

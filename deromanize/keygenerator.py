@@ -27,6 +27,7 @@ import operator
 from collections import abc
 from typing import Tuple
 from .trees import Trie, BackTrie
+import libaaron
 
 
 class KeyGeneratorError(Exception):
@@ -41,35 +42,14 @@ class PatternError(KeyGeneratorError):
     pass
 
 
-class reify:
-    """ Use as a class method decorator.  It operates almost exactly like the
-    Python ``@property`` decorator, but it puts the result of the method it
-    decorates into the instance dict after the first call, effectively
-    replacing the function it decorates with an instance variable.  It is, in
-    Python parlance, a non-data descriptor.
-
-    Stolen from pyramid.
-    http://docs.pylonsproject.org/projects/pyramid/en/latest/api/decorator.html#pyramid.decorator.reify
-    """
-    def __init__(self, wrapped):
-        self.wrapped = wrapped
-        functools.update_wrapper(self, wrapped)
-
-    def __get__(self, inst, objtype=None):
-        if inst is None:
-            return self
-        val = self.wrapped(inst)
-        setattr(inst, self.wrapped.__name__, val)
-        return val
-
-
 class Replacement:
     """a type for holding a replacement and it's weight. A Replacement on its
     own doesn't know what it's replacing. It should be an item in a
     ReplacementList.
     """
-    def __init__(self, weight: int, value: str = None, key: str = None,
-                 keyvalue: Tuple[Tuple[str, str], ...] = None) -> None:
+    __slots__ = 'keyvalue', 'weight'
+
+    def __init__(self, weight, keyvalue: Tuple[Tuple[str, str], ...]):
         """A string with some metadata
 
             weight - an integer to determine how the item will be sorted.
@@ -83,32 +63,33 @@ class Replacement:
                        replacements. Used by the __add__ method
 
         """
-        if (value and keyvalue) or (value is None and keyvalue is None):
-            raise KeyGeneratorError(
-                "Either values or parts must be supplied, but not both!")
-        elif keyvalue is not None:
-            self.keyvalue = keyvalue
-        elif value is not None and key is not None:
-            self.str = value
-            self.keyvalue = ((key, value),)
+        self.keyvalue = keyvalue
         self.weight = weight
-        self._key = key
+        # self._key = key
+
+    @classmethod
+    def new(cls, weight, value: str, key: str = '') -> 'Replacement':
+        return cls(weight, ((key, value),))
 
     def __add__(self, other):
         """adding one Replacement to another results in them combining their
         weight and string values.
         """
+        # return _add_rs(self, other)
         return Replacement(self.weight + other.weight,
-                           keyvalue=self.keyvalue + other.keyvalue)
+                           self.keyvalue + other.keyvalue)
 
     def __bool__(self):
         return self.keyvalue != (('', ''),)
 
     def __repr__(self):
-        return "Replacement({!r}, {!r})".format(self.weight, self.str)
+        return "Replacement.new({!r}, {!r})".format(self.weight, self.str)
 
     def __str__(self):
         return self.str
+
+    def __eq__(self, other):
+        return self.id == other.id
 
     @property
     def values(self):
@@ -120,9 +101,9 @@ class Replacement:
 
     @property
     def key(self):
-        return self._key or ''.join(self.keyparts)
+        return ''.join(self.keyparts)
 
-    @reify
+    @property
     def str(self):
         return ''.join(self.values)
 
@@ -134,7 +115,16 @@ class Replacement:
 
     def serializable(self):
         return dict(type='Replacement', weight=self.weight,
-                    str=self.str, keyvalue=self.keyvalue)
+                    keyvalue=self.keyvalue)
+
+
+def _add_rs(*reps):
+    weight = 0
+    keyvalue = []
+    for r in reps:
+        weight += r.weight
+        keyvalue.extend(r.keyvalue)
+    return Replacement(weight, tuple(keyvalue))
 
 
 class StatRep(Replacement):
@@ -152,6 +142,9 @@ class ReplacementList(abc.MutableSequence):
     """
     reptype = Replacement
 
+    # all the wacky stuff with "parents" and "keyparts" and soforth is
+    # to delay the concatination of strings until the last possible
+    # moment. It's insane, but it actually makes it notably faster.
     def __init__(self, key: str = None, values: list = None,
                  weight: int = None, parents=None, profile=None) -> None:
         self.profile = profile or {}
@@ -175,9 +168,9 @@ class ReplacementList(abc.MutableSequence):
         if isinstance(value, Replacement):
             return value
         elif isinstance(value, str):
-            return Replacement(weight, value, key=self.key)
+            return Replacement.new(weight, value, self.key)
         elif isinstance(value, abc.Sequence) and len(value) == 2:
-            return Replacement(value[0], value[1], key=self.key)
+            return Replacement.new(value[0], value[1], self.key)
         else:
             raise KeyGeneratorError(
                 '%s is not supported for insertion in ReplacementList. Got %r'
@@ -190,13 +183,13 @@ class ReplacementList(abc.MutableSequence):
             else:
                 yield from part.keyparts
 
-    @reify
+    @libaaron.reify
     def keyparts(self):
         this = tuple(self._keyparts())
         del self.keytree
         return this
 
-    @reify
+    @libaaron.reify
     def key(self):
         broken_clusters = self.profile.get('broken_clusters')
         if not broken_clusters:
@@ -317,20 +310,23 @@ class ReplacementList(abc.MutableSequence):
                                    keyvalue=rep.keyvalue)
 
 
+_empty_rep = Replacement.new(0, '')
+
+
 def add_reps(reps):
     """Add together a bunch of ReplacementLists"""
-    try:
-        return functools.reduce(operator.add, reps)
-    except TypeError:
+    if not reps:
         return get_empty_replist()
 
-
-class RepListList(list):
-    """I'm to lazy to type deromanize.add_reps"""
-    add = add_reps
-
-    def __repr__(self):
-        return 'RepListList(%r)' % [i.simplify() for i in self]
+    data = [r.data for r in reps]
+    composite_values = [i for i in itertools.product(*data)]
+    for i, rs in enumerate(composite_values):
+        composite_values[i] = _add_rs(*rs)
+        # for r in rs:
+        #     rep = rep + r
+        # composite_values[i] = rep
+    key = ''.join(r.key for r in reps)
+    return ReplacementList(key, composite_values)
 
 
 class ReplacementKey(Trie):
@@ -338,15 +334,13 @@ class ReplacementKey(Trie):
     strings.
     """
     template = 'ReplacementKey(%r)'
+    __slots__ = ()
 
     def __repr__(self):
         return self.template % self.simplify()
 
     def __setitem__(self, key, value, weight=None):
         super().__setitem__(key, _ensurereplist(key, value, weight))
-
-    def getallparts(self, key):
-        return RepListList(super().getallparts(key))
 
     def update(self, dictionary, weight=None):
         for k, v in dictionary.items():
@@ -430,6 +424,7 @@ class ReplacementBackKey(ReplacementKey, BackTrie):
     """same as ReplacementKey, but it will begin analysing a string from the
     end, so it can be used for identifying suffixes.
     """
+    __slots__ = ()
     template = 'ReplacementBackKey(%r)'
 
 
@@ -437,6 +432,8 @@ class CharSets:
     """A Container for character sets which can be used to generate replacement
     lists based on patterns.
     """
+    __slots__ = 'parsed', 'unparsed', 'key'
+
     def __init__(self, char_sets, key):
         self.unparsed = Trie(char_sets)
         self.parsed = Trie()
@@ -762,7 +759,7 @@ class KeyGenerator:
                 remainder)
 
     def get_all_stat_parts(self, key, string):
-        results = RepListList()
+        results = []
         remainder = string
         while remainder:
             value, remainder = self.get_stat_part(key, remainder)
@@ -802,7 +799,8 @@ for i in range(1, 10):
     esc_numbs['\\'+s] = i
     esc_numbs['\\\\'+s] = '\\' + s
 del s, i
+_empty_replist = ReplacementList('', [''])
 
 
 def get_empty_replist():
-    return ReplacementList('', [Replacement(0, '', '')])
+    return _empty_replist.copy()

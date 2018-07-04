@@ -35,10 +35,10 @@ def suffixtree():
 
 @pytest.fixture
 def rep():
-    return (deromanize.Replacement(2, 'foo'),
-            deromanize.Replacement(3, 'bar'),
-            deromanize.Replacement(4, 'spam'),
-            deromanize.Replacement(5, 'eggs'))
+    return (deromanize.Replacement.new(2, 'foo'),
+            deromanize.Replacement.new(3, 'bar'),
+            deromanize.Replacement.new(4, 'spam'),
+            deromanize.Replacement.new(5, 'eggs'))
 
 
 @pytest.fixture
