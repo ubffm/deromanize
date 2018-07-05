@@ -92,11 +92,11 @@ class Replacement:
 
     @property
     def values(self):
-        return tuple(i[1] for i in self.keyvalue)
+        return tuple([i[1] for i in self.keyvalue])
 
     @property
     def keyparts(self):
-        return tuple(i[0] for i in self.keyvalue)
+        return tuple([i[0] for i in self.keyvalue])
 
     @property
     def key(self):
@@ -324,7 +324,7 @@ def add_reps(reps):
         # for r in rs:
         #     rep = rep + r
         # composite_values[i] = rep
-    key = ''.join(r.key for r in reps)
+    key = ''.join([r.key for r in reps])
     return ReplacementList(key, composite_values)
 
 
@@ -621,7 +621,7 @@ class KeyGenerator:
             parent = ReplacementKey()
         else:
             parent = self.get_base(parent)
-        dicts = (self.profile[g] for g in profile_groups)
+        dicts = [self.profile[g] for g in profile_groups]
         self[key_name] = parent.child(*dicts, weight=weight, suffix=suffix)
         return self[key_name]
 
@@ -752,7 +752,7 @@ class KeyGenerator:
         reps, remainder = self[key].getpart(string)
         max_i = max(i.weight for i in reps) + 1
         intermediate = [(max_i - i.weight, i.values) for i in reps]
-        total = sum(i[0] for i in intermediate)
+        total = sum([i[0] for i in intermediate])
         return (ReplacementList(
             reps.key, [StatRep(i[0]/total, i[1]) for i in intermediate]),
                 remainder)
