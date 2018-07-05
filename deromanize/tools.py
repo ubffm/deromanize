@@ -2,7 +2,7 @@ import json
 import os
 import pathlib
 from collections import abc
-from .keygenerator import KeyGenerator, ReplacementList, add_reps
+from .keygenerator import KeyGenerator, ReplacementList, add_rlists
 
 
 def cached_keys(loader, profile_file, cache_path,
@@ -58,7 +58,7 @@ def front_mid_end_decode(keys, word):
         return _no_end(keys, word)
 
     if remainder:
-        middle = add_reps(keys['mid'].getallparts(remainder))
+        middle = add_rlists(keys['mid'].getallparts(remainder))
         return (front + middle + end)
     else:
         return (front + end)

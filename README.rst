@@ -144,7 +144,7 @@ comes out.
   ReplacementList('o', [Replacement(0, 'ו'), Replacement(1, '')]),
   ReplacementList('m', [Replacement(0, 'מ')])]
   >>> # looks a little silly.
-  >>> print(deromanize.add_reps(key['base'].getallparts('shalom')))
+  >>> print(deromanize.add_rlists(key['base'].getallparts('shalom')))
   shalom:
   0 שלומ
   1 שלמ
@@ -333,7 +333,7 @@ to the bottom of the list.
 
 .. code:: python
 
-  >>> shalom = add_reps( key['base'].getallparts('shalom'))
+  >>> shalom = add_rlists( key['base'].getallparts('shalom'))
   >>> print(shalom)
   shalom:
    0 שלומ
@@ -417,7 +417,7 @@ endings separately.
   ReplacementList('m', [(0, 'ם')])
   >>> remainder
   'shalo'
-  >>> front = add_reps(keys['base'].getallparts(remainder))
+  >>> front = add_rlists(keys['base'].getallparts(remainder))
   >>> shalom = front + suffix
   >>> print(shalom)
   shalom:
@@ -560,7 +560,7 @@ write k instead of ḳ, we can generate something like this:
 .. code:: python
 
   >>> shuk = 'shuk' # oops! should be "shuḳ"
-  >>> shuk = add_reps(keys['base'].getallparts(shuk))
+  >>> shuk = add_rlists(keys['base'].getallparts(shuk))
   print(shuk)
   shuk:
    0 שוכ

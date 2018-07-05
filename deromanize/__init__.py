@@ -22,7 +22,7 @@ from .keygenerator import (
     ReplacementList,
     ReplacementKey,
     ReplacementBackKey,
-    add_reps,
+    add_rlists,
     get_empty_replist)
 from .tools import (
     cached_keys,

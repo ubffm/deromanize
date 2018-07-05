@@ -312,7 +312,7 @@ class ReplacementList(abc.MutableSequence):
 _empty_rep = Replacement.new(0, '')
 
 
-def add_reps(reps):
+def add_rlists(reps):
     """Add together a bunch of ReplacementLists"""
     if not reps:
         return get_empty_replist()
@@ -707,7 +707,7 @@ class KeyGenerator:
                         except IndexError:
                             reps.append(ReplacementList(
                                 '', [(i, block)], profile=self.profile))
-                replacement = add_reps(reps)
+                replacement = add_rlists(reps)
                 replist.extend(replacement.data, weight)
 
         return generated

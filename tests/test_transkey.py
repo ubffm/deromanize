@@ -103,16 +103,16 @@ def test_replacement_list_addition(rep):
     print(rlist3)
     assert str(rlist3) == (
             'bazfjords:\n 6 foospam\n 7 fooeggs\n 7 barspam\n 8 bareggs')
-    rlist4 = deromanize.add_reps((rlist1, rlist2))
+    rlist4 = deromanize.add_rlists((rlist1, rlist2))
     rlist4.sort()
     assert str(rlist4) == str(rlist3)
 
 
 def test_transkey(key):
-    rep = deromanize.add_reps(key['base'].getallparts('shalom'))
+    rep = deromanize.add_rlists(key['base'].getallparts('shalom'))
     print(rep)
     assert str(rep) == 'shalom:\n 0 שלומ\n 1 שלמ'
-    rep = deromanize.add_reps(key['end'].getallparts('shalom'))
+    rep = deromanize.add_rlists(key['end'].getallparts('shalom'))
     assert isinstance(key['end'], trees.BackTrie)
     print(rep)
     assert str(rep) == 'shalom:\n 0 שלום'
