@@ -22,7 +22,6 @@ Classes for implementing the KeyGenerator type.
 import copy
 import functools
 import itertools
-import json
 from collections import abc
 from typing import Tuple
 from .trees import Trie, BackTrie
@@ -74,9 +73,9 @@ class Replacement:
         """adding one Replacement to another results in them combining their
         weight and string values.
         """
-        # return _add_rs(self, other)
-        return Replacement(self.weight + other.weight,
-                           self.keyvalue + other.keyvalue)
+        return _add_rs(self, other)
+        # return Replacement(self.weight + other.weight,
+        #                    self.keyvalue + other.keyvalue)
 
     def __bool__(self):
         return self.keyvalue != (('', ''),)
@@ -110,20 +109,16 @@ class Replacement:
         return self
 
     def copy(self):
-        return type(self)(self.weight, keyvalue=self.keyvalue)
-
-    def serializable(self):
-        return dict(type='Replacement', weight=self.weight,
-                    keyvalue=self.keyvalue)
+        return type(self)(self.weight, self.keyvalue)
 
 
 def _add_rs(*reps):
     weight = 0
-    keyvalue = []
+    keyvalue = ()
     for r in reps:
         weight += r.weight
-        keyvalue.extend(r.keyvalue)
-    return Replacement(weight, tuple(keyvalue))
+        keyvalue += r.keyvalue
+    return Replacement(weight, keyvalue)
 
 
 class StatRep(Replacement):
@@ -145,8 +140,8 @@ class ReplacementList(abc.MutableSequence):
     # to delay the concatination of strings until the last possible
     # moment. It's insane, but it actually makes it notably faster.
     def __init__(self, key: str = None, values: list = None,
-                 weight: int = None, parents=None, profile=None) -> None:
-        self.profile = profile or {}
+                 weight: int = None, parents=None, broken=None) -> None:
+        self.broken = broken
         if key is not None:
             self.key = key
         elif parents is None:
@@ -190,16 +185,15 @@ class ReplacementList(abc.MutableSequence):
 
     @libaaron.reify
     def key(self):
-        broken_clusters = self.profile.get('broken_clusters')
-        if not broken_clusters:
+        if not self.broken:
             return ''.join(self.keyparts)
 
         newparts = [self.keyparts[0]]
         for i, part in enumerate(self.keyparts[1:]):
             prev = self.keyparts[i]
             cluster = prev + part
-            if cluster in broken_clusters:
-                newparts[i] = broken_clusters[cluster]
+            if cluster in self.broken:
+                newparts[i] = self.broken[cluster]
             else:
                 newparts.append(part)
         return ''.join(newparts)
@@ -214,7 +208,7 @@ class ReplacementList(abc.MutableSequence):
         return ReplacementList(
             values=composite_values,
             parents=(self, other),
-            profile=self.profile)
+            broken=self.broken)
 
     def __setitem__(self, i, value):
         self.data[i] = self._prep_value(i, value)
@@ -294,10 +288,6 @@ class ReplacementList(abc.MutableSequence):
     def simplify(self):
         return (self.key, [(i.weight, str(i)) for i in self])
 
-    def serializable(self):
-        return dict(type='ReplacementList', key=self.key,
-                    data=[r.serializable() for r in self.data])
-
     def makestat(self):
         """convert all weights to faux statistical values because my boss told
         me to.
@@ -321,9 +311,6 @@ def add_rlists(reps):
     composite_values = [i for i in itertools.product(*data)]
     for i, rs in enumerate(composite_values):
         composite_values[i] = _add_rs(*rs)
-        # for r in rs:
-        #     rep = rep + r
-        # composite_values[i] = rep
     key = ''.join([r.key for r in reps])
     return ReplacementList(key, composite_values)
 
@@ -360,39 +347,6 @@ class ReplacementKey(Trie):
         """
         return {k: [(i.weight, str(i)) for i in v.data]
                 for k, v in self.items()}
-
-    def treesimplify(self):
-        """reduces the tree to and all special types to JSON serializable types. A new
-        ReplacementKey can be instantiated from this resulting object.
-        """
-        new = self.copy()
-        self._ts_walk(new.root)
-        return new.root
-
-    @classmethod
-    def _ts_walk(cls, node):
-        if node[0] is ...:
-            node[0] = None
-        else:
-            node[0] = (node[0].key, [(i.weight, str(i)) for i in node[0].data])
-        for newnode in node[1].values():
-            cls._ts_walk(newnode)
-
-    @classmethod
-    def tree_expand(cls, tree):
-        cls._te_walk(tree)
-        new = cls()
-        new.root = tree
-        return new
-
-    @classmethod
-    def _te_walk(cls, node, key=None):
-        if node[0] is None:
-            node[0] = ...
-        else:
-            node[0] = cls._ensurereplist(node[0][0], node[0][1])
-        for k, newnode in node[1].items():
-            cls._te_walk(newnode, k)
 
     def child(self, *dicts, weight=None, suffix=False):
         """creates a new tree containing starting from the elements in the
@@ -534,41 +488,27 @@ class KeyGenerator:
     """an object to build up a transliteration key from a config file. (or
     rather, a python dictionary unmarshalled from a config file.)
     """
-    def __init__(self, profile, base_key='base', mtime=0,
-                 from_cache=False, tree_cache=False):
-        self.mtime = mtime
+    def __init__(self, profile, base_key='base'):
         self.base_key = base_key
         self.keys = {}
-        self.tree_cache = tree_cache
-        if from_cache:
-            self.profile = profile['profile']
-            self.normalize_profile()
-            self.broken_clusters = profile.get('broken_clusters')
-            for k, v in profile['keys'].items():
-                if self.profile['keys'][k].get('suffix'):
-                    trie = ReplacementBackKey
-                else:
-                    trie = ReplacementKey
-                self[k] = trie.tree_expand(v) if tree_cache else trie(v)
+        # profile is static. prof2 is modified while the keys are generated
+        self.profile = profile
+        self.prof2 = copy.deepcopy(self.profile)
+        self.normalize_profile()
+        self.broken = profile.get('broken_clusters')
+        if 'char_sets' in profile:
+            self.char_sets = CharSets(profile['char_sets'], self)
         else:
-            # profile is static. prof2 is modified while the keys are generated
-            self.profile = profile
-            self.prof2 = copy.deepcopy(self.profile)
-            self.normalize_profile()
-            self.broken_clusters = profile.get('broken_clusters')
-            if 'char_sets' in profile:
-                self.char_sets = CharSets(profile['char_sets'], self)
-            else:
-                self.char_sets = {}
-            if 'keys' in profile:
-                try:
-                    self.keygen(base_key)
-                except KeyError:
-                    self[base_key] = ReplacementKey()
-                for k in profile['keys']:
-                    if k == base_key or k in self.keys:
-                        continue
-                    self.keygen(k)
+            self.char_sets = {}
+        if 'keys' in profile:
+            try:
+                self.keygen(base_key)
+            except KeyError:
+                self[base_key] = ReplacementKey()
+            for k in profile['keys']:
+                if k == base_key or k in self.keys:
+                    continue
+                self.keygen(k)
 
     def __setitem__(self, key, value):
         self.keys[key] = value
@@ -636,7 +576,7 @@ class KeyGenerator:
             for k, v in g.items():
                 if any(i in k for i in self.char_sets):
                     generated = self.patterngen(
-                        k, v, broken_clusters=self.broken_clusters)
+                        k, v, broken_clusters=self.broken)
                     self[key_name].extend(generated, weight)
                     profile_updates.append((k, generated))
                 else:
@@ -658,7 +598,7 @@ class KeyGenerator:
             for k, v in g.items():
                 if any(i in k for i in self.char_sets):
                     generated = self.patterngen(
-                        k, v, broken_clusters=self.broken_clusters)
+                        k, v, broken_clusters=self.broken)
                     self[key_name].update(generated, weight)
                     profile_updates.append((k, generated))
                 else:
@@ -680,7 +620,7 @@ class KeyGenerator:
             [self._parse_rep(i) for i in rep_patterns])
         generated = {}
         for keyparts in itertools.product(*blocks):
-            replist = ReplacementList(parents=keyparts, profile=self.profile)
+            replist = ReplacementList(parents=keyparts, broken=self.broken)
             generated[replist.key] = replist
             for i, rep_group in enumerate(rep_patterns):
                 reps = []
@@ -699,14 +639,14 @@ class KeyGenerator:
                             if not isinstance(blocks[j], str):
                                 reps.append(ReplacementList(
                                     '', [(i, block)],
-                                    profile=self.profile))
+                                    broken=self.broken))
                             else:
                                 reps.append(ReplacementList(
                                     blocks[j], [(i, block)],
-                                    profile=self.profile))
+                                    broken=self.broken))
                         except IndexError:
                             reps.append(ReplacementList(
-                                '', [(i, block)], profile=self.profile))
+                                '', [(i, block)], broken=self.broken))
                 replacement = add_rlists(reps)
                 replist.extend(replacement.data, weight)
 
@@ -778,16 +718,6 @@ class KeyGenerator:
         else:
             raise TypeError('%s is not supported as "base" argument.'
                             % type(base))
-
-    def serialize(self, file, *args, **kwargs):
-        file.write(str(self.mtime) + '\n')
-        data = {'keys': {}, 'profile': self.profile}
-
-        for k, v in self.keys.items():
-            key = v.treesimplify() if self.tree_cache else v.simplify()
-            data['keys'][k] = key
-
-        file.write(json.dumps(data, *args, **kwargs))
 
 
 # Just another Trie for parsing regex-like capture group syntax for

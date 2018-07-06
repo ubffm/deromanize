@@ -128,23 +128,25 @@ Given the above configuration, we can do something like this:
 
    >>> # KeyGenerators only deal with python objects, so we have to
    >>> # deserialize it from our chosen format.
-   >>> import deromanize
+   >>> import deromanize as dr
    >>> import yaml
    >>> PROFILE = yaml.safe_load(open('above_profile.yml'))
-   >>> key = deromanize.KeyGenerator(PROFILE)
+   >>> keys = dr.KeyGenerator(PROFILE)
 
 From here, we can start sending words to the ``base`` key and see what
 comes out.
 
 .. code:: python
 
-  >>> key['base'].getallparts('shalom')
-  [ReplacementList('sh', [Replacement(0, 'ש')]), ReplacementList('a',
-  [Replacement(0, '')]), ReplacementList('l', [Replacement(0, 'ל')]),
-  ReplacementList('o', [Replacement(0, 'ו'), Replacement(1, '')]),
-  ReplacementList('m', [Replacement(0, 'מ')])]
+  >>> parts = keys['base'].getallparts('shalom')
+  >>> parts
+  [ReplacementList('sh', [(0, 'ש')]), ReplacementList('a', [(0, '')]), ReplacementList('l', [(0, 'ל')]), ReplacementList('o', [(0, 'ו'), (1, '')]), ReplacementList('m', [(0, 'מ')])]
   >>> # looks a little silly.
-  >>> print(deromanize.add_rlists(key['base'].getallparts('shalom')))
+  >>> shalom = dr.add_rlists(parts)
+  >>> shalom
+  ReplacementList('shalom', [(0, 'שלומ'), (1, 'שלמ')])
+  >>> # conversion to a string provides a more readable version
+  >>> print(shalom)
   shalom:
   0 שלומ
   1 שלמ
@@ -164,7 +166,7 @@ Building Complex Profiles
 Let's take a look at a more complex profile, bit by bit. (See the
 profile in its entirety here_.)
 
-.. _here: data/new.yml
+.. _here: ./tests/test.yml
 
 Defining Keys
 ~~~~~~~~~~~~~
@@ -286,7 +288,7 @@ to it:
   >>> key['base']['y']
   ReplacementList('y', [(0, 'יי'), (1, 'י')])
   >>> key['base']['y'][0]
-  Replacement(0, 'יי')
+  Replacement.new(0, 'יי')
 
 Basically, each item is explicitly assigned its weight. When you add
 two ``Replacement`` instances together, their weights are added, and
@@ -295,7 +297,7 @@ their strings are concatenated.
 .. code:: python
 
   >>> key['base']['y'][0] + key['base']['o'][0]
-  Replacement(0, 'ייו')
+  Replacement.new(0, 'ייו')
 
 Likewise, when two ``ReplacemntList`` items are added together, the
 Romanized strings are concatenated, and all the permutations of their
@@ -505,26 +507,7 @@ generated for all characters in the group.
 Please be aware that you can generate a LOT of replacements this way
 (the above groups, with the rest of this config file, generate over
 50,000 new replacements). This can take a few seconds to chug
-through. This time can be cut by more than half by caching the
-generated keys. Below is code from scripts/dr which will handle the
-use of cached keys.
-
-.. code:: python
-
-    PROJECT_DIR = Path(deromanize.__file__).parents[1]
-    CONFIG_FILE = PROJECT_DIR/'data'/'new.yml'
-    CACHE = Path('.cache')
-
-    with CONFIG_FILE.open() as config:
-        key = deromanize.cached_keys(yaml.safe_load, config, cache)
-
-The ``cached_keys`` function take the profile loader function as it's
-first argument (some kind of de-serializer), an open, readable file
-object of the profile as the second, and a string of the path or
-pathlib.Path instance pointing to the cache file third. Basically if
-the profile has been modified since the last cache was created, it
-will generate all new keys and dump what it made into the
-cache. Otherwise, it will just load the cache.
+through.
 
 A Little Hidden Metadata
 ------------------------
@@ -537,7 +520,7 @@ examples:
 .. code:: python
 
   >>> shalom[0]
-  Replacement(0, 'שלום')
+  Replacement.new(0, 'שלום')
   >>> shalom[0].keyvalue
   (('sh', 'ש'), ('a', ''), ('l', 'ל'), ('o', 'ו'), ('m', 'ם'))
 
