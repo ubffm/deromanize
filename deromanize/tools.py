@@ -80,7 +80,7 @@ def _no_end(keys, word):
 
 
 def get_self_rep(string):
-    return ReplacementList(string, [string])
+    return ReplacementList.new(string, [string])
 
 
 def _flatten(iterable, dict_func=None):

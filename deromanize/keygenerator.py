@@ -23,9 +23,10 @@ import copy
 import functools
 import itertools
 from collections import abc
-from typing import Tuple
+from typing import Tuple, List
 from .trees import Trie, BackTrie
-import libaaron
+KeyValue = Tuple[Tuple[str, str], ...]
+KeyParts = Tuple[str, ...]
 
 
 class KeyGeneratorError(Exception):
@@ -47,7 +48,7 @@ class Replacement:
     """
     __slots__ = 'keyvalue', 'weight'
 
-    def __init__(self, weight, keyvalue: Tuple[Tuple[str, str], ...]):
+    def __init__(self, weight: int, keyvalue: KeyValue):
         """A string with some metadata
 
             weight - an integer to determine how the item will be sorted.
@@ -135,27 +136,35 @@ class ReplacementList(abc.MutableSequence):
     they belong.
     """
     reptype = Replacement
+    __slots__ = 'keyparts', 'broken', 'data'
 
     # all the wacky stuff with "parents" and "keyparts" and soforth is
     # to delay the concatination of strings until the last possible
     # moment. It's insane, but it actually makes it notably faster.
-    def __init__(self, key: str = None, values: list = None,
-                 weight: int = None, parents=None, broken=None) -> None:
+    def __init__(self, keyparts: KeyParts, values: List[Replacement] = None,
+                 weight: int = None, broken=None):
+        assert isinstance(keyparts, tuple)
+        self.keyparts = keyparts
         self.broken = broken
-        if key is not None:
-            self.key = key
-        elif parents is None:
-            raise KeyGeneratorError('unable to define key for ReplacementList')
-
-        if parents is None:
-            self.keytree = key
-            self.keyparts = (key,)
-        else:
-            self.keytree = parents
-        # self.data: List[Replacement] = []
         self.data = []
         if values is not None:
-            self.extend(values, weight)
+            if isinstance(values[0], Replacement):
+                self.data = values.copy()
+            else:
+                self.extend(values, weight)
+
+    @classmethod
+    def new(cls, key: str, values: list = None,
+            weight: int = None, broken=None) -> 'ReplacementList':
+        assert isinstance(key, str)
+        new = cls((key,), values, weight, broken)
+        return new
+
+    @classmethod
+    def from_values(cls, values, weight=None,
+                    broken=None) -> 'ReplacementList':
+        keyparts = values[0].keyparts
+        return cls(keyparts, values, weight, broken)
 
     def _prep_value(self, weight: int, value) -> Replacement:
         """Make sure any input is converted into a Replacement."""
@@ -170,20 +179,7 @@ class ReplacementList(abc.MutableSequence):
                 '%s is not supported for insertion in ReplacementList. Got %r'
                 % (type(value), value))
 
-    def _keyparts(self):
-        for part in self.keytree:
-            if isinstance(part, str):
-                yield part
-            else:
-                yield from part.keyparts
-
-    @libaaron.reify
-    def keyparts(self):
-        this = tuple(self._keyparts())
-        del self.keytree
-        return this
-
-    @libaaron.reify
+    @property
     def key(self):
         if not self.broken:
             return ''.join(self.keyparts)
@@ -193,7 +189,7 @@ class ReplacementList(abc.MutableSequence):
             prev = self.keyparts[i]
             cluster = prev + part
             if cluster in self.broken:
-                newparts[i] = self.broken[cluster]
+                newparts[-1] = self.broken[cluster]
             else:
                 newparts.append(part)
         return ''.join(newparts)
@@ -206,8 +202,8 @@ class ReplacementList(abc.MutableSequence):
         composite_values = [x + y for x, y in itertools.product(self, other)]
 
         return ReplacementList(
-            values=composite_values,
-            parents=(self, other),
+            self.keyparts + other.keyparts,
+            composite_values,
             broken=self.broken)
 
     def __setitem__(self, i, value):
@@ -246,7 +242,7 @@ class ReplacementList(abc.MutableSequence):
             i.weight += weight
 
     def __repr__(self):
-        string = "ReplacementList({!r}, [".format(self.key)
+        string = "ReplacementList.new({!r}, [".format(self.key)
         if not self.data:
             return string + '])'
         for i in self:
@@ -276,12 +272,12 @@ class ReplacementList(abc.MutableSequence):
             del self.data[i]
 
     def __deepcopy__(self, memo=None):
-        new = type(self)(self.key)
+        new = type(self)(self.keyparts)
         new.data = self.data.copy()
         return new
 
     def copy(self):
-        new = type(self)(self.key)
+        new = type(self)(self.keyparts)
         new.data = [i.copy() for i in self.data]
         return new
 
@@ -311,8 +307,17 @@ def add_rlists(reps):
     composite_values = [i for i in itertools.product(*data)]
     for i, rs in enumerate(composite_values):
         composite_values[i] = _add_rs(*rs)
-    key = ''.join([r.key for r in reps])
-    return ReplacementList(key, composite_values)
+    return ReplacementList.from_values(composite_values)
+
+
+def unpack_keyparts(keytree):
+    parts = ()
+    for part in keytree:
+        if isinstance(part, str):
+            parts += part,
+        else:
+            parts += part.keyparts
+    return tuple(parts)
 
 
 class ReplacementKey(Trie):
@@ -337,7 +342,7 @@ class ReplacementKey(Trie):
         replacement list in the trie is extended with the given replacemnts.
         """
         for k, v in dictionary.items():
-            self.setdefault(k, ReplacementList(k)).extend(
+            self.setdefault(k, ReplacementList.new(k)).extend(
                 _ensurereplist(k, v, weight))
 
     def simplify(self):
@@ -370,7 +375,7 @@ def _ensurereplist(key, value, weight=None):
         return value
     elif not isinstance(value, list) or isinstance(value[0], int):
         value = [value]
-    return ReplacementList(key, value, weight)
+    return ReplacementList.new(key, value, weight)
 
 
 class ReplacementBackKey(ReplacementKey, BackTrie):
@@ -581,7 +586,7 @@ class KeyGenerator:
                     profile_updates.append((k, generated))
                 else:
                     self[key_name].setdefault(
-                        k, ReplacementList(k)).extend(
+                        k, ReplacementList.new(k)).extend(
                             _ensurereplist(k, v, weight))
             for key, generated in profile_updates:
                 del g[key]
@@ -620,7 +625,8 @@ class KeyGenerator:
             [self._parse_rep(i) for i in rep_patterns])
         generated = {}
         for keyparts in itertools.product(*blocks):
-            replist = ReplacementList(parents=keyparts, broken=self.broken)
+            replist = ReplacementList(unpack_keyparts(keyparts),
+                                      broken=self.broken)
             generated[replist.key] = replist
             for i, rep_group in enumerate(rep_patterns):
                 reps = []
@@ -637,15 +643,15 @@ class KeyGenerator:
                     else:
                         try:
                             if not isinstance(blocks[j], str):
-                                reps.append(ReplacementList(
+                                reps.append(ReplacementList.new(
                                     '', [(i, block)],
                                     broken=self.broken))
                             else:
-                                reps.append(ReplacementList(
+                                reps.append(ReplacementList.new(
                                     blocks[j], [(i, block)],
                                     broken=self.broken))
                         except IndexError:
-                            reps.append(ReplacementList(
+                            reps.append(ReplacementList.new(
                                 '', [(i, block)], broken=self.broken))
                 replacement = add_rlists(reps)
                 replist.extend(replacement.data, weight)
@@ -693,7 +699,7 @@ class KeyGenerator:
         max_i = max(i.weight for i in reps) + 1
         intermediate = [(max_i - i.weight, i.values) for i in reps]
         total = sum([i[0] for i in intermediate])
-        return (ReplacementList(
+        return (ReplacementList.new(
             reps.key, [StatRep(i[0]/total, i[1]) for i in intermediate]),
                 remainder)
 
@@ -728,7 +734,7 @@ for i in range(1, 10):
     esc_numbs['\\'+s] = i
     esc_numbs['\\\\'+s] = '\\' + s
 del s, i
-_empty_replist = ReplacementList('', [''])
+_empty_replist = ReplacementList.new('', [''])
 
 
 def get_empty_replist():
