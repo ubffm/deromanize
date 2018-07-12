@@ -48,16 +48,29 @@ class Trie(abc.MutableMapping):
     def __bool__(self):
         return bool(self.root[1])
 
+    def _mknode(self, key):
+        node = self.root
+        for char in key:
+            node = node[1].setdefault(char, [..., {}])
+        return node
+
     def __setitem__(self, key: str, value):
         """follow (and generate, if needed) all neccesary intermediate nodes to
         create a new endpoint.
         """
-        node = self.root
-        for char in key:
-            node = node[1].setdefault(char, [..., {}])
+        node = self._mknode(key)
         if node[0] is ...:
             self._len += 1
         node[0] = value
+
+    def setdefault(self, key, default=None):
+        node = self._mknode(key)
+        if node[0] is ...:
+            self._len += 1
+            node[0] = default
+            return default
+
+        return node[0]
 
     def __repr__(self):
         return self.template % self.dict()
@@ -189,10 +202,7 @@ class Trie(abc.MutableMapping):
             try:
                 node = node[1][char]
             except KeyError:
-                if value is ...:
-                    raise
-                else:
-                    return value, remainder
+                break
 
             if node[0] is not ...:
                 value, remainder = node[0], key[i+1:]
