@@ -1,6 +1,7 @@
 import json
 import os
 import pathlib
+import libaaron
 from collections import abc
 from .keygenerator import KeyGenerator, ReplacementList, add_rlists
 
@@ -83,24 +84,11 @@ def get_self_rep(string):
     return ReplacementList.new(string, [string])
 
 
-def _flatten(iterable, dict_func=None):
-    """return a flat iterator containing all the strings an non-iterables from
-    a nested data structure.
-    """
-    if dict_func and isinstance(iterable, abc.Mapping):
-        iterable = dict_func(iterable)
-    for item in iterable:
-        if isinstance(item, str) or not isinstance(item, abc.Iterable):
-            yield item
-        else:
-            yield from _flatten(item)
-
-
 def stripper_factory(*wordgroups, dict_func=None):
     """create a strip function based on groups of characters *not* to be
     stripped
     """
-    chars = {c for string in _flatten(wordgroups, dict_func)
+    chars = {c for string in libaaron.flatten(wordgroups, dict_func)
              if isinstance(string, str)
              for c in string}
 
