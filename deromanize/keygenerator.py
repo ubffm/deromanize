@@ -46,22 +46,9 @@ class Replacement:
     own doesn't know what it's replacing. It should be an item in a
     ReplacementList.
     """
-    __slots__ = 'keyvalue', 'weight'
+    __slots__ = 'keyvalue', 'weight', '_hash'
 
     def __init__(self, weight: int, keyvalue: KeyValue):
-        """A string with some metadata
-
-            weight - an integer to determine how the item will be sorted.
-
-            values - the actual text values of the replacement.
-
-            key - what the values is replacing in the original script.
-                  (optional)
-
-            keyvalue - a tuple of of the keys and values from parent
-                       replacements. Used by the __add__ method
-
-        """
         self.keyvalue = keyvalue
         self.weight = weight
         # self._key = key
@@ -74,9 +61,14 @@ class Replacement:
         """adding one Replacement to another results in them combining their
         weight and string values.
         """
-        return _add_rs(self, other)
-        # return Replacement(self.weight + other.weight,
-        #                    self.keyvalue + other.keyvalue)
+        return add_rs(self, other)
+
+    def __hash__(self):
+        try:
+            return self._hash
+        except AttributeError:
+            self._hash = hash(self.keyvalue)
+            return self._hash
 
     def __bool__(self):
         return self.keyvalue != (('', ''),)
@@ -113,7 +105,7 @@ class Replacement:
         return type(self)(self.weight, self.keyvalue)
 
 
-def _add_rs(*reps):
+def add_rs(*reps):
     weight = 0
     keyvalue = ()
     for r in reps:
@@ -306,7 +298,7 @@ def add_rlists(reps):
     data = [r.data for r in reps]
     composite_values = [i for i in itertools.product(*data)]
     for i, rs in enumerate(composite_values):
-        composite_values[i] = _add_rs(*rs)
+        composite_values[i] = add_rs(*rs)
     return ReplacementList.from_values(composite_values)
 
 

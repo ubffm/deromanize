@@ -211,6 +211,7 @@ final errors:
 gem_prefixes: [ha, mi, ba, va, ka, la, še, wa]
 joined_prefixes: hmbvklšwûūu
 prefix_vowels: ĕieaioēā
+fix_k: true
 
 to_new:
   replacements:
