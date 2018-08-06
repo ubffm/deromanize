@@ -51,7 +51,6 @@ class Replacement:
     def __init__(self, weight: int, keyvalue: KeyValue):
         self.keyvalue = keyvalue
         self.weight = weight
-        # self._key = key
 
     @classmethod
     def new(cls, weight, value: str, key: str = '') -> 'Replacement':
@@ -80,7 +79,7 @@ class Replacement:
         return self.str
 
     def __eq__(self, other):
-        return self.id == other.id
+        return self.keyvalue == other.keyvalue
 
     @property
     def values(self):
@@ -119,8 +118,16 @@ class StatRep(Replacement):
     because Kai likes multiplication.
     """
     def __add__(self, other):
-        return StatRep(self.weight * other.weight,
-                       keyvalue=self.keyvalue + other.keyvalue)
+        return add_srs(self, other)
+
+
+def add_srs(*reps):
+    weight = 1
+    keyvalue = ()
+    for r in reps:
+        weight *= r.weight
+        keyvalue += r.keyvalue
+    return StatRep(weight, keyvalue)
 
 
 class ReplacementList(abc.MutableSequence):
@@ -282,24 +289,40 @@ class ReplacementList(abc.MutableSequence):
         """
         reciprocals = [1/(rep.weight+1) for rep in self]
         total = sum(reciprocals)
-        for i, rep in enumerate(self):
-            self.data[i] = StatRep(reciprocals[i] / total,
-                                   keyvalue=rep.keyvalue)
+        data = [StatRep(reciprocals[i] / total, keyvalue=rep.keyvalue)
+                for i, rep in enumerate(self)]
+        return StatRepList(self.keyparts, data)
+
+
+class StatRepList(ReplacementList):
+    def makestat(self):
+        return self
+
+    def sort(self, reverse=False, key=lambda rep: rep):
+        reverse = not reverse
+        return super().sort(self, reverse, key)
 
 
 _empty_rep = Replacement.new(0, '')
 
 
-def add_rlists(reps):
+def add_rlists(rlists):
     """Add together a bunch of ReplacementLists"""
-    if not reps:
+    if not rlists:
         return get_empty_replist()
 
-    data = [r.data for r in reps]
+    if any(isinstance(rl, StatRepList) for rl in rlists):
+        data = [rl.makestat().data for rl in rlists]
+        add = add_srs
+        t = StatRepList
+    else:
+        data = [rl.data for rl in rlists]
+        add = add_rs
+        t = ReplacementList
     composite_values = [i for i in itertools.product(*data)]
     for i, rs in enumerate(composite_values):
-        composite_values[i] = add_rs(*rs)
-    return ReplacementList.from_values(composite_values)
+        composite_values[i] = add(*rs)
+    return t.from_values(composite_values)
 
 
 def unpack_keyparts(keytree):

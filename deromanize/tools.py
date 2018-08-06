@@ -2,7 +2,6 @@ import json
 import os
 import pathlib
 import libaaron
-from collections import abc
 from .keygenerator import KeyGenerator, ReplacementList, add_rlists
 
 

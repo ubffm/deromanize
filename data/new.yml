@@ -124,6 +124,7 @@ final errors:
   av: [יו, ו]
   v: ו
   k: ק
+  ehah: יה
 
 beginning:
   y: י
@@ -143,6 +144,7 @@ broken_clusters:
 gem_prefixes: [ha, mi, ba, ka, la, she, ṿa]
 joined_prefixes: [h, m, b, v, k, l, sh, ṿ, u]
 prefix_vowels: eiao
+other_prefixes: [de]
 
 to_new:
   replacements: {}

@@ -21,7 +21,7 @@ import copy
 from collections import abc
 
 
-class Trie(abc.MutableMapping):
+class Trie:
     """a prefix tree for dealing with transliteration standards with digraphs.
     This could just be a dictionary if there weren't digraphs in
     transliteration standards.
@@ -45,8 +45,17 @@ class Trie(abc.MutableMapping):
         if initializer is not None:
             self.update(initializer)
 
+    def clear(self):
+        self.root[1].clear()
+
     def __bool__(self):
         return bool(self.root[1])
+
+    def __eq__(self, other):
+        return self.items() == other.items()
+
+    def __ne__(self, other):
+        return self.items() != other.items()
 
     def _mknode(self, key):
         node = self.root
@@ -72,8 +81,9 @@ class Trie(abc.MutableMapping):
 
         return node[0]
 
-    def __repr__(self):
-        return self.template % self.dict()
+    def update(self, mapping):
+        for k, v in mapping.items():
+            self[k] = v
 
     def _getnode(self, key: str):
         """get a node out of the internal prefix tree. An implementation
@@ -83,6 +93,28 @@ class Trie(abc.MutableMapping):
         for char in key:
             node = node[1][char]
         return node
+
+    def __getitem__(self, key: str):
+        node = self._getnode(key)
+        if node[0] is ...:
+            raise KeyError(key)
+        return node[0]
+
+    def get(self, key: str, default):
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+    def __contains__(self, key):
+        try:
+            self[key]
+            return True
+        except KeyError:
+            return False
+
+    def __repr__(self):
+        return self.template % self.dict()
 
     def getstack(self, key: str):
         """given a key, return a tuple containing the final node along with a
@@ -100,15 +132,10 @@ class Trie(abc.MutableMapping):
             node = node[1][char]
         return node, stack
 
-    def __getitem__(self, key: str):
-        node = self._getnode(key)
-        if node[0] is ...:
-            raise KeyError(key)
-        return node[0]
-
-    def __delitem__(self, key: str):
+    def pop(self, key: str):
         node, stack = self.getstack(key)
-        if node[0] is ...:
+        val = node[0]
+        if val is ...:
             raise KeyError(key)
         self._len -= 1
         node[0] = ...
@@ -119,6 +146,18 @@ class Trie(abc.MutableMapping):
                 del parent[1][key]
             else:
                 break
+        return val
+
+    def popitem(self):
+        try:
+            k, v = next(iter(self))
+        except StopIteration:
+            raise KeyError(self.__class__.__name__ + ' is empty')
+        del self[k]
+        return k, v
+
+    def __delitem__(self, key: str):
+        self.pop(key)
 
     def containsnode(self, key: str):
         """check if a node on the tree exists without regard for whether it
@@ -235,6 +274,9 @@ class Trie(abc.MutableMapping):
             self._put_none(node)
 
 
+abc.MutableMapping.register(Trie)
+
+
 class BackTrie(Trie):
     """Subclass of Trie that takes it from the back. I used to call this a
     suffix tree, but I've since learned that that is incorrect.
@@ -242,8 +284,8 @@ class BackTrie(Trie):
     __slots__ = ()
     template = 'BackTrie(%r)'
 
-    def __setitem__(self, key: str, value):
-        super().__setitem__(key[::-1], value)
+    def _mknode(self, key: str):
+        return super()._mknode(key[::-1])
 
     def _getnode(self, key: str):
         return super()._getnode(key[::-1])

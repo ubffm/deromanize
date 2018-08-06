@@ -19,6 +19,7 @@
 from .keygenerator import (
     KeyGenerator,
     Replacement,
+    StatRep,
     ReplacementList,
     ReplacementKey,
     ReplacementBackKey,
