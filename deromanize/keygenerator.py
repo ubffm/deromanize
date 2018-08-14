@@ -73,7 +73,8 @@ class Replacement:
         return self.keyvalue != (('', ''),)
 
     def __repr__(self):
-        return "Replacement.new({!r}, {!r})".format(self.weight, self.str)
+        return "{}.new({!r}, {!r})".format(
+            self.__class__.__name__, self.weight, self.str)
 
     def __str__(self):
         return self.str

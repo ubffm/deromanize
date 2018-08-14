@@ -64,6 +64,15 @@ def front_mid_end_decode(keys, word):
         return (front + end)
 
 
+def fix_gershayim_late(rlist):
+    newdata = []
+    for rep in rlist:
+        keyvalue = tuple((k, v.replace('"', '״')) for k, v in rep.keyvalue)
+        newdata.append(type(rep)(rep.weight, keyvalue))
+
+    return rlist.from_values(newdata)
+
+
 def _no_end(keys, word):
     # this is where words go when getting the ending first produces strange
     # results.

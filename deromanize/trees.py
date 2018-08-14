@@ -30,7 +30,6 @@ class Trie:
     a lot of the same methods and behaviors as a dictionary, along with special
     methods for use with transliteration stuff.
     """
-    template = 'Trie(%r)'
     __slots__ = 'root', '_len'
 
     def __init__(self, initializer=None):
@@ -114,7 +113,7 @@ class Trie:
             return False
 
     def __repr__(self):
-        return self.template % self.dict()
+        return '%s(%r)' % (self.__class__.__name__, self.dict())
 
     def getstack(self, key: str):
         """given a key, return a tuple containing the final node along with a
@@ -282,7 +281,6 @@ class BackTrie(Trie):
     suffix tree, but I've since learned that that is incorrect.
     """
     __slots__ = ()
-    template = 'BackTrie(%r)'
 
     def _mknode(self, key: str):
         return super()._mknode(key[::-1])

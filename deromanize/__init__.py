@@ -29,6 +29,7 @@ from .tools import (
     cached_keys,
     front_mid_end_decode,
     get_self_rep,
-    stripper_factory)
+    stripper_factory,
+    fix_gershayim_late)
 from . import cacheutils
 from .config import Config, ConfigError
