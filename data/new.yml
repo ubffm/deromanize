@@ -6,6 +6,7 @@ keys:
 
   mid:
     - clusters
+    - mid_patterns: 3
     - infrequent: 10
 
   front:
@@ -22,6 +23,7 @@ keys:
 
 char_sets:
   C: consonants
+  V: vowels
   F:
     key: front
     chars: consonants
@@ -54,7 +56,7 @@ consonants:
   ś: ש
   sh: ש
   t: ת
-  "'": [א, ע, '']
+  "'": [א, ע, "'", '']
 
 vowels:
   i: [י, '']
@@ -76,6 +78,7 @@ clusters:
   iy: [יי, י]
   yi: [יי, י]
   ayi: [י, יי]
+  ai: יי
   ʾa: א
   aʾ: א
 
@@ -94,6 +97,9 @@ consonant errors:
 
 cc:
   CC: \1\2
+
+mid_patterns:
+  VV: [\1א\2, \1\2, \1ע\2]
 
 final:
   k: ך
