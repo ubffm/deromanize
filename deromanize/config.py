@@ -1,15 +1,8 @@
 from pathlib import Path
-from types import ModuleType
 from typing import Dict
 from . import KeyGenerator
 from .cacheutils import DBWrapper
-
-
-try:
-    import yaml
-except ImportError:
-    yaml = ModuleType('yaml')
-
+import yaml
 CFG_PATHS = [Path()/'.deromanize.yml',
              Path.home()/'.config'/'derom'/'config.yml']
 PROJ_PATH = Path(__file__).parents[1]
