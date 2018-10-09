@@ -24,8 +24,8 @@ def test_base_shalom(basic_keys):
     shalom = dr.add_rlists(parts)
     print('\n%r' % shalom)
     assert repr(shalom) == "ReplacementList('shalom', [(0, 'שלומ'), (1, 'שלמ')])"
-    print('\n'+repr(str(shalom)))
-    print('\n'+str(shalom))
+    print('\n'+ repr(str(shalom)))
+    print('\n'+ str(shalom))
     assert str(shalom) == 'shalom:\n 0 שלומ\n 1 שלמ'
 
 
