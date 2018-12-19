@@ -24,12 +24,14 @@ from .keygenerator import (
     ReplacementKey,
     ReplacementBackKey,
     add_rlists,
-    get_empty_replist)
+    get_empty_replist,
+)
 from .tools import (
     cached_keys,
     front_mid_end_decode,
     get_self_rep,
     stripper_factory,
-    fix_gershayim_late)
+    fix_gershayim_late,
+)
 from . import cacheutils
 from .config import Config, ConfigError

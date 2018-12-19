@@ -21,19 +21,21 @@ from typing import Callable, Dict, Set, Tuple, Iterable, Sequence, Union
 import sqlalchemy as sa
 from sqlalchemy.ext.declarative import as_declarative
 from sqlalchemy.orm import sessionmaker, relationship
+
 RepKeyValue = Iterable[Tuple[str, str]]
 
 
-def strip_chars(rep_keyvalue: RepKeyValue,
-                chars: Set[str] = set('ieaou')) -> RepKeyValue:
+def strip_chars(
+    rep_keyvalue: RepKeyValue, chars: Set[str] = set("ieaou")
+) -> RepKeyValue:
     """strips all diacritics off of certain chars in a Replacement.keyvalue.
     Returns the update keyvalue.
     """
     new_keyvalue = []
     for source, target in rep_keyvalue:
-        new = ''
+        new = ""
         for c in source:
-            decomposed = unicodedata.normalize('NFD', c)
+            decomposed = unicodedata.normalize("NFD", c)
             if decomposed[0] in chars:
                 new += decomposed[0]
             else:
@@ -42,13 +44,13 @@ def strip_chars(rep_keyvalue: RepKeyValue,
     return new_keyvalue
 
 
-CONV_TEMP = '{!r} -> {!r}'
+CONV_TEMP = "{!r} -> {!r}"
 
 
 def replacer_maker(
-        simple_replacements: Dict[str, str],
-        pair_replacements: Dict[str, Sequence[str]]
-        ) -> Callable[[RepKeyValue], RepKeyValue]:
+    simple_replacements: Dict[str, str],
+    pair_replacements: Dict[str, Sequence[str]],
+) -> Callable[[RepKeyValue], RepKeyValue]:
     """returns a function which takes a Replacement.keyvalue and returns a new
     keyvalue which adheres to a new keyvalue where the Romanized part adheres
     to a new standard.
@@ -67,9 +69,10 @@ def replacer_maker(
     of transcription where human error may have occured.
     """
     pair_reps = {tuple(v): k for k, v in pair_replacements.items()}
-    pairs_str = '\n'.join(CONV_TEMP.format(k, v) for k, v in pair_reps.items())
-    simple_str = '\n'.join(CONV_TEMP.format(k, v)
-                           for k, v in simple_replacements.items())
+    pairs_str = "\n".join(CONV_TEMP.format(k, v) for k, v in pair_reps.items())
+    simple_str = "\n".join(
+        CONV_TEMP.format(k, v) for k, v in simple_replacements.items()
+    )
 
     def replace(rep_keyvalue: RepKeyValue) -> RepKeyValue:
         """takes a RepKeyValue as an argument and returns a new one with
@@ -82,7 +85,9 @@ def replacer_maker(
         Then, simple replaments are preformed:
 
         {simple}
-        """.format(pairs=pairs_str, simple=simple_str)
+        """.format(
+            pairs=pairs_str, simple=simple_str
+        )
         new_keyvalue = []
         for pair in rep_keyvalue:
             target = pair[1]
@@ -104,6 +109,7 @@ def make_cache_processor(cache, converter=None):
             source = converter(source)
         cache.add(source, target, addr=addr)
         return source
+
     return wrapper
 
 
@@ -113,13 +119,15 @@ def get_combos(rep_key) -> Set[Tuple[str, str]]:
         pair
         for replist in rep_key.values()
         for rep in replist
-        for pair in rep.keyvalue)
+        for pair in rep.keyvalue
+    )
 
 
 class CacheObject:
     """creates cache objects to track numbers of occurances of certain word
     pairs.
     """
+
     def __init__(self, seed=None):
         if isinstance(seed, dict):
             self.data = seed
@@ -128,8 +136,9 @@ class CacheObject:
             if seed:
                 self.update(seed)
 
-    def add(self, source: str, target: str,
-            count: Union[int, str] = 1) -> None:
+    def add(
+        self, source: str, target: str, count: Union[int, str] = 1
+    ) -> None:
         count = int(count)
         current = self.data.setdefault(source, {}).setdefault(target, 0)
         self.data[source][target] = current + count
@@ -139,16 +148,16 @@ class CacheObject:
             self.add(*row)
 
     def __getitem__(
-            self, value: Union[str, Tuple[str, str]]
+        self, value: Union[str, Tuple[str, str]]
     ) -> Union[Dict[str, int], int]:
 
         if isinstance(value, tuple):
             return self.data[value[0]][value[1]]
         return self.data[value]
 
-    def get(self,
-            value: Union[str, Tuple[str, str]],
-            default=None) -> Union[Dict[str, int], int]:
+    def get(
+        self, value: Union[str, Tuple[str, str]], default=None
+    ) -> Union[Dict[str, int], int]:
 
         try:
             return self[value]
@@ -175,62 +184,63 @@ class CacheObject:
 class Base:
     def __repr__(self):
         name = self.__class__.__name__
-        attrs = ('%s=%r' % (attr, getattr(self, attr)) for attr
-                 in self._sa_class_manager.keys()
-                 if not (attr[-2:] == 'id'
-                         or isinstance(getattr(self, attr), list)))
-        return name + '(%s)' % ', '.join(attrs)
+        attrs = (
+            "%s=%r" % (attr, getattr(self, attr))
+            for attr in self._sa_class_manager.keys()
+            if not (attr[-2:] == "id" or isinstance(getattr(self, attr), list))
+        )
+        return name + "(%s)" % ", ".join(attrs)
 
 
 class Source(Base):
-    __tablename__ = 'sources'
+    __tablename__ = "sources"
     id = sa.Column(sa.Integer, primary_key=True)
     address = sa.Column(sa.String, index=True)
-    match_id = sa.Column(sa.Integer, sa.ForeignKey('matches.id'))
+    match_id = sa.Column(sa.Integer, sa.ForeignKey("matches.id"))
 
-    match = relationship('Match', back_populates='sources')
+    match = relationship("Match", back_populates="sources")
 
 
 class Match(Base):
-    __tablename__ = 'matches'
+    __tablename__ = "matches"
     id = sa.Column(sa.Integer, primary_key=True)
-    original_id = sa.Column(sa.Integer, sa.ForeignKey('original.id'))
-    romanized_id = sa.Column(sa.Integer, sa.ForeignKey('romanized.id'))
+    original_id = sa.Column(sa.Integer, sa.ForeignKey("original.id"))
+    romanized_id = sa.Column(sa.Integer, sa.ForeignKey("romanized.id"))
     count = sa.Column(sa.Integer)
 
-    original = relationship('Original', back_populates='matches')
-    romanized = relationship('Romanized', back_populates='matches')
-    sources = relationship('Source', back_populates='match')
+    original = relationship("Original", back_populates="matches")
+    romanized = relationship("Romanized", back_populates="matches")
+    sources = relationship("Source", back_populates="match")
 
 
-sa.Index('matches_idx', Match.original_id, Match.romanized_id, unique=True)
+sa.Index("matches_idx", Match.original_id, Match.romanized_id, unique=True)
 
 
 class Standard(Base):
-    __tablename__ = 'standards'
+    __tablename__ = "standards"
     id = sa.Column(sa.Integer, primary_key=True)
     st = sa.Column(sa.String, index=True, unique=True)
 
 
 class Original(Base):
-    __tablename__ = 'original'
+    __tablename__ = "original"
     id = sa.Column(sa.Integer, primary_key=True)
     form = sa.Column(sa.String, index=True, unique=True)
 
-    matches = relationship('Match', back_populates='original')
+    matches = relationship("Match", back_populates="original")
 
 
 class Romanized(Base):
-    __tablename__ = 'romanized'
+    __tablename__ = "romanized"
     id = sa.Column(sa.Integer, primary_key=True)
     form = sa.Column(sa.String, index=True)
-    standard_id = sa.Column(sa.Integer, sa.ForeignKey('standards.id'))
+    standard_id = sa.Column(sa.Integer, sa.ForeignKey("standards.id"))
 
     standard = relationship(Standard)
-    matches = relationship('Match', back_populates='romanized')
+    matches = relationship("Match", back_populates="romanized")
 
 
-sa.Index('standard_form', Romanized.form, Romanized.standard_id, unique=True)
+sa.Index("standard_form", Romanized.form, Romanized.standard_id, unique=True)
 
 
 class DBWrapper:
@@ -259,27 +269,32 @@ class DBWrapper:
         if standard:
             args.append(Standard.st == standard)
 
-        query = self.session.query(Match, Romanized, Standard, Original)\
-            .join(Romanized).join(Standard).join(Original)\
+        query = (
+            self.session.query(Match, Romanized, Standard, Original)
+            .join(Romanized)
+            .join(Standard)
+            .join(Original)
             .filter(*args)
+        )
         if orig and rom and standard:
             return query.first()
         else:
             return query
 
     def construct_match(self, orig, rom, standard):
-        original = (
-            self.session.query(Original).filter(Original.form == orig).first()
-            or Original(form=orig))
+        original = self.session.query(Original).filter(
+            Original.form == orig
+        ).first() or Original(form=orig)
         romanized = (
-            self.session.query(Romanized).join(Standard)
-            .filter(Romanized.form == rom, Standard.st == standard).first())
+            self.session.query(Romanized)
+            .join(Standard)
+            .filter(Romanized.form == rom, Standard.st == standard)
+            .first()
+        )
         if not romanized:
-            st = (
-                self.session.query(Standard)
-                .filter(Standard.st == standard).first()
-                or
-                Standard(st=standard))
+            st = self.session.query(Standard).filter(
+                Standard.st == standard
+            ).first() or Standard(st=standard)
             romanized = Romanized(form=rom, standard=st)
 
         return Match(original=original, romanized=romanized, count=1)
@@ -298,10 +313,14 @@ class DBWrapper:
             self.session.add(match)
 
     def __iter__(self):
-        query = self.session.query(
-            Original.form, Romanized.form,
-            Standard.st, Match.count)\
-            .join(Match).join(Romanized).join(Standard)
+        query = (
+            self.session.query(
+                Original.form, Romanized.form, Standard.st, Match.count
+            )
+            .join(Match)
+            .join(Romanized)
+            .join(Standard)
+        )
         yield from query
 
     def mkcache(self, standard, seed=None):

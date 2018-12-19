@@ -25,6 +25,7 @@ import itertools
 from collections import abc
 from typing import Tuple, List
 from .trees import Trie, BackTrie
+
 KeyValue = Tuple[Tuple[str, str], ...]
 KeyParts = Tuple[str, ...]
 
@@ -46,14 +47,15 @@ class Replacement:
     own doesn't know what it's replacing. It should be an item in a
     ReplacementList.
     """
-    __slots__ = 'keyvalue', 'weight', '_hash'
+
+    __slots__ = "keyvalue", "weight", "_hash"
 
     def __init__(self, weight: int, keyvalue: KeyValue):
         self.keyvalue = keyvalue
         self.weight = weight
 
     @classmethod
-    def new(cls, weight, value: str, key: str = '') -> 'Replacement':
+    def new(cls, weight, value: str, key: str = "") -> "Replacement":
         return cls(weight, ((key, value),))
 
     def __add__(self, other):
@@ -70,11 +72,12 @@ class Replacement:
             return self._hash
 
     def __bool__(self):
-        return self.keyvalue != (('', ''),)
+        return self.keyvalue != (("", ""),)
 
     def __repr__(self):
         return "{}.new({!r}, {!r})".format(
-            self.__class__.__name__, self.weight, self.str)
+            self.__class__.__name__, self.weight, self.str
+        )
 
     def __str__(self):
         return self.str
@@ -92,11 +95,11 @@ class Replacement:
 
     @property
     def key(self):
-        return ''.join(self.keyparts)
+        return "".join(self.keyparts)
 
     @property
     def str(self):
-        return ''.join(self.values)
+        return "".join(self.values)
 
     def __deepcopy__(self, memo=None):
         return self
@@ -118,6 +121,7 @@ class StatRep(Replacement):
     """class for representing replacement weights that look like statistics
     because Kai likes multiplication.
     """
+
     def __add__(self, other):
         return add_srs(self, other)
 
@@ -135,14 +139,20 @@ class ReplacementList(abc.MutableSequence):
     """a list of Replacements with a .key attribute containing the key to which
     they belong.
     """
+
     reptype = Replacement
-    __slots__ = 'keyparts', 'broken', 'data'
+    __slots__ = "keyparts", "broken", "data"
 
     # all the wacky stuff with "parents" and "keyparts" and soforth is
     # to delay the concatination of strings until the last possible
     # moment. It's insane, but it actually makes it notably faster.
-    def __init__(self, keyparts: KeyParts, values: List[Replacement] = None,
-                 weight: int = None, broken=None):
+    def __init__(
+        self,
+        keyparts: KeyParts,
+        values: List[Replacement] = None,
+        weight: int = None,
+        broken=None,
+    ):
         assert isinstance(keyparts, tuple)
         self.keyparts = keyparts
         self.broken = broken
@@ -154,15 +164,17 @@ class ReplacementList(abc.MutableSequence):
                 self.extend(values, weight)
 
     @classmethod
-    def new(cls, key: str, values: list = None,
-            weight: int = None, broken=None) -> 'ReplacementList':
+    def new(
+        cls, key: str, values: list = None, weight: int = None, broken=None
+    ) -> "ReplacementList":
         assert isinstance(key, str)
         new = cls((key,), values, weight, broken)
         return new
 
     @classmethod
-    def from_values(cls, values, weight=None,
-                    broken=None) -> 'ReplacementList':
+    def from_values(
+        cls, values, weight=None, broken=None
+    ) -> "ReplacementList":
         keyparts = values[0].keyparts
         return cls(keyparts, values, weight, broken)
 
@@ -176,13 +188,14 @@ class ReplacementList(abc.MutableSequence):
             return Replacement.new(value[0], value[1], self.key)
         else:
             raise KeyGeneratorError(
-                '%s is not supported for insertion in ReplacementList. Got %r'
-                % (type(value), value))
+                "%s is not supported for insertion in ReplacementList. Got %r"
+                % (type(value), value)
+            )
 
     @property
     def key(self):
         if not self.broken:
-            return ''.join(self.keyparts)
+            return "".join(self.keyparts)
 
         newparts = [self.keyparts[0]]
         for i, part in enumerate(self.keyparts[1:]):
@@ -192,7 +205,7 @@ class ReplacementList(abc.MutableSequence):
                 newparts[-1] = self.broken[cluster]
             else:
                 newparts.append(part)
-        return ''.join(newparts)
+        return "".join(newparts)
 
     def __add__(self, other):
         """When two ReplacementList instances are added together, the keys are
@@ -204,7 +217,8 @@ class ReplacementList(abc.MutableSequence):
         return ReplacementList(
             self.keyparts + other.keyparts,
             composite_values,
-            broken=self.broken)
+            broken=self.broken,
+        )
 
     def __setitem__(self, i, value):
         self.data[i] = self._prep_value(i, value)
@@ -244,15 +258,15 @@ class ReplacementList(abc.MutableSequence):
     def __repr__(self):
         string = "ReplacementList.new({!r}, [".format(self.key)
         if not self.data:
-            return string + '])'
+            return string + "])"
         for i in self:
-            string += '%r, ' % ((i.weight, str(i)),)
-        return string[:-2] + '])'
+            string += "%r, " % ((i.weight, str(i)),)
+        return string[:-2] + "])"
 
     def __str__(self):
-        string = self.key + ':'
+        string = self.key + ":"
         for r in self:
-            string += '\n{:2} {}'.format(r.weight, r)
+            string += "\n{:2} {}".format(r.weight, r)
         return string
 
     def sort(self, reverse=False, key=lambda rep: rep.weight):
@@ -288,10 +302,12 @@ class ReplacementList(abc.MutableSequence):
         """convert all weights to faux statistical values because my boss told
         me to.
         """
-        reciprocals = [1/(rep.weight+1) for rep in self]
+        reciprocals = [1 / (rep.weight + 1) for rep in self]
         total = sum(reciprocals)
-        data = [StatRep(reciprocals[i] / total, keyvalue=rep.keyvalue)
-                for i, rep in enumerate(self)]
+        data = [
+            StatRep(reciprocals[i] / total, keyvalue=rep.keyvalue)
+            for i, rep in enumerate(self)
+        ]
         return StatRepList(self.keyparts, data)
 
 
@@ -304,7 +320,7 @@ class StatRepList(ReplacementList):
         return super().sort(self, reverse, key)
 
 
-_empty_rep = Replacement.new(0, '')
+_empty_rep = Replacement.new(0, "")
 
 
 def add_rlists(rlists):
@@ -330,7 +346,7 @@ def unpack_keyparts(keytree):
     parts = ()
     for part in keytree:
         if isinstance(part, str):
-            parts += part,
+            parts += (part,)
         else:
             parts += part.keyparts
     return tuple(parts)
@@ -340,7 +356,8 @@ class ReplacementKey(Trie):
     """a tree the only contains ReplacementLists. used for tokenizing Romanized
     strings.
     """
-    template = 'ReplacementKey(%r)'
+
+    template = "ReplacementKey(%r)"
     __slots__ = ()
 
     def __repr__(self):
@@ -359,15 +376,17 @@ class ReplacementKey(Trie):
         """
         for k, v in dictionary.items():
             self.setdefault(k, ReplacementList.new(k)).extend(
-                _ensurereplist(k, v, weight))
+                _ensurereplist(k, v, weight)
+            )
 
     def simplify(self):
         """reduces the tree to a dictionary and all special types to JSON
         serializable types. A new ReplacementKey can be instantiated from this
         resulting object.
         """
-        return {k: [(i.weight, str(i)) for i in v.data]
-                for k, v in self.items()}
+        return {
+            k: [(i.weight, str(i)) for i in v.data] for k, v in self.items()
+        }
 
     def child(self, *dicts, weight=None, suffix=False):
         """creates a new tree containing starting from the elements in the
@@ -398,15 +417,17 @@ class ReplacementBackKey(ReplacementKey, BackTrie):
     """same as ReplacementKey, but it will begin analysing a string from the
     end, so it can be used for identifying suffixes.
     """
+
     __slots__ = ()
-    template = 'ReplacementBackKey(%r)'
+    template = "ReplacementBackKey(%r)"
 
 
 class CharSets:
     """A Container for character sets which can be used to generate replacement
     lists based on patterns.
     """
-    __slots__ = 'parsed', 'unparsed', 'key'
+
+    __slots__ = "parsed", "unparsed", "key"
 
     def __init__(self, char_sets, key):
         self.unparsed = Trie(char_sets)
@@ -437,7 +458,7 @@ class CharSets:
             return self.parsed.getpart(key)
         except KeyError:
             _, remainder = self.unparsed.getpart(key)
-            matched = key[:len(key)-len(remainder)]
+            matched = key[: len(key) - len(remainder)]
             self.conf_parse(matched)
         return self.parsed.getpart(key)
 
@@ -472,21 +493,21 @@ class CharSets:
         # function is used throughout the class to parse charsets as needed.
         def_ = self.unparsed[key]
         if not isinstance(def_, dict):
-            def_ = {'chars': def_}
+            def_ = {"chars": def_}
 
-        _chars = def_['chars']
+        _chars = def_["chars"]
         if isinstance(_chars, str):
-            if 'key' not in def_ and _chars in self.key.profile['keys']:
+            if "key" not in def_ and _chars in self.key.profile["keys"]:
                 parent_key = _chars
                 self.check_and_gen_key(parent_key)
                 parent = self.key[_chars]
             else:
-                parent_key = def_.get('key')
+                parent_key = def_.get("key")
                 parent = self.key.get_base(parent_key)
             chars = self.key.prof2[_chars]
         else:
-            chars = def_['chars']
-            parent_key = def_.get('key')
+            chars = def_["chars"]
+            parent_key = def_.get("key")
             parent = self.key.get_base(parent_key)
         self.check_and_gen_key(parent_key)
         for c in chars:
@@ -495,9 +516,15 @@ class CharSets:
                     self.getallparts(c)
                 except KeyError:
                     raise CharSetsError(
-                        '%r not in the %r key, parent of char set %r!'
-                        % (c, self.key.base_key if parent_key is None
-                           else parent_key, key))
+                        "%r not in the %r key, parent of char set %r!"
+                        % (
+                            c,
+                            self.key.base_key
+                            if parent_key is None
+                            else parent_key,
+                            key,
+                        )
+                    )
         self.parsed[key] = [parent[c] for c in chars]
 
     def check_and_gen_key(self, key):
@@ -509,24 +536,25 @@ class KeyGenerator:
     """an object to build up a transliteration key from a config file. (or
     rather, a python dictionary unmarshalled from a config file.)
     """
-    def __init__(self, profile, base_key='base'):
+
+    def __init__(self, profile, base_key="base"):
         self.base_key = base_key
         self.keys = {}
         # profile is static. prof2 is modified while the keys are generated
         self.profile = profile
         self.prof2 = copy.deepcopy(self.profile)
         self.normalize_profile()
-        self.broken = profile.get('broken_clusters')
-        if 'char_sets' in profile:
-            self.char_sets = CharSets(profile['char_sets'], self)
+        self.broken = profile.get("broken_clusters")
+        if "char_sets" in profile:
+            self.char_sets = CharSets(profile["char_sets"], self)
         else:
             self.char_sets = {}
-        if 'keys' in profile:
+        if "keys" in profile:
             try:
                 self.keygen(base_key)
             except KeyError:
                 self[base_key] = ReplacementKey()
-            for k in profile['keys']:
+            for k in profile["keys"]:
                 if k == base_key or k in self.keys:
                     continue
                 self.keygen(k)
@@ -541,23 +569,24 @@ class KeyGenerator:
         """There are shortcuts for leaving implied keys out of the profile
         definitions. This normalizes out those shortcuts.
         """
-        keys = self.profile['keys']
+        keys = self.profile["keys"]
         for k, v in keys.items():
             if isinstance(v, (list, str)):
-                keys[k] = {'groups': v}
-            if isinstance(keys[k]['groups'], str):
-                keys[k]['groups'] = [keys[k]['groups']]
+                keys[k] = {"groups": v}
+            if isinstance(keys[k]["groups"], str):
+                keys[k]["groups"] = [keys[k]["groups"]]
 
     def __iter__(self):
         return iter(self.keys)
 
     def keygen(self, keyname):
         """generates a key from the `keys` section of a profile."""
-        info = self.profile['keys'][keyname]
-        suffix = info.get('suffix')
+        info = self.profile["keys"][keyname]
+        suffix = info.get("suffix")
         parent = info.get(
-            'parent', None if keyname == self.base_key else self.base_key)
-        groups = info.get('groups', [])
+            "parent", None if keyname == self.base_key else self.base_key
+        )
+        groups = info.get("groups", [])
         if parent not in self.keys and parent is not None:
             self.keygen(parent)
         self.new(keyname, parent=parent, suffix=suffix)
@@ -573,8 +602,9 @@ class KeyGenerator:
                     self.extend(keyname, self.profile[k], weight=v)
         # self[keyname] = key
 
-    def new(self, key_name, *profile_groups,
-            parent=None, weight=None, suffix=False):
+    def new(
+        self, key_name, *profile_groups, parent=None, weight=None, suffix=False
+    ):
         """create a new key based on `parent` key that is updated from the
         specified `profile_groups`.
         """
@@ -597,13 +627,14 @@ class KeyGenerator:
             for k, v in g.items():
                 if any(i in k for i in self.char_sets):
                     generated = self.patterngen(
-                        k, v, broken_clusters=self.broken)
+                        k, v, broken_clusters=self.broken
+                    )
                     self[key_name].extend(generated, weight)
                     profile_updates.append((k, generated))
                 else:
                     self[key_name].setdefault(
-                        k, ReplacementList.new(k)).extend(
-                            _ensurereplist(k, v, weight))
+                        k, ReplacementList.new(k)
+                    ).extend(_ensurereplist(k, v, weight))
             for key, generated in profile_updates:
                 del g[key]
                 g.update(generated)
@@ -619,7 +650,8 @@ class KeyGenerator:
             for k, v in g.items():
                 if any(i in k for i in self.char_sets):
                     generated = self.patterngen(
-                        k, v, broken_clusters=self.broken)
+                        k, v, broken_clusters=self.broken
+                    )
                     self[key_name].update(generated, weight)
                     profile_updates.append((k, generated))
                 else:
@@ -628,8 +660,9 @@ class KeyGenerator:
                 del g[key]
                 g.update(generated)
 
-    def patterngen(self, key_pattern, rep_patterns,
-                   weight=0, broken_clusters=None):
+    def patterngen(
+        self, key_pattern, rep_patterns, weight=0, broken_clusters=None
+    ):
         """implement some kind of pattern-based replacement generation for character
         classes.
         """
@@ -638,11 +671,13 @@ class KeyGenerator:
         if isinstance(rep_patterns, str) or isinstance(rep_patterns[0], int):
             rep_patterns = [rep_patterns]
         rep_patterns = self._normalize_rp(
-            [self._parse_rep(i) for i in rep_patterns])
+            [self._parse_rep(i) for i in rep_patterns]
+        )
         generated = {}
         for keyparts in itertools.product(*blocks):
-            replist = ReplacementList(unpack_keyparts(keyparts),
-                                      broken=self.broken)
+            replist = ReplacementList(
+                unpack_keyparts(keyparts), broken=self.broken
+            )
             generated[replist.key] = replist
             for i, rep_group in enumerate(rep_patterns):
                 reps = []
@@ -652,23 +687,32 @@ class KeyGenerator:
                             reps.append(keyparts[pattern_idx[block]])
                         except KeyError:
                             raise PatternError(
-                                'found reference to capture-group %s, but '
+                                "found reference to capture-group %s, but "
                                 "there aren't that many capture groups in "
-                                'pattern %r'
-                                % (block, key_pattern))
+                                "pattern %r" % (block, key_pattern)
+                            )
                     else:
                         try:
                             if not isinstance(blocks[j], str):
-                                reps.append(ReplacementList.new(
-                                    '', [(i, block)],
-                                    broken=self.broken))
+                                reps.append(
+                                    ReplacementList.new(
+                                        "", [(i, block)], broken=self.broken
+                                    )
+                                )
                             else:
-                                reps.append(ReplacementList.new(
-                                    blocks[j], [(i, block)],
-                                    broken=self.broken))
+                                reps.append(
+                                    ReplacementList.new(
+                                        blocks[j],
+                                        [(i, block)],
+                                        broken=self.broken,
+                                    )
+                                )
                         except IndexError:
-                            reps.append(ReplacementList.new(
-                                '', [(i, block)], broken=self.broken))
+                            reps.append(
+                                ReplacementList.new(
+                                    "", [(i, block)], broken=self.broken
+                                )
+                            )
                 replacement = add_rlists(reps)
                 replist.extend(replacement.data, weight)
 
@@ -691,23 +735,26 @@ class KeyGenerator:
     @staticmethod
     def _normalize_rp(rep_pats):
         if len(rep_pats) == 1 or all(
-                len(i) == len(rep_pats[0]) for i in rep_pats[1:]):
+            len(i) == len(rep_pats[0]) for i in rep_pats[1:]
+        ):
             return rep_pats
         by_len = sorted(rep_pats, key=len, reverse=True)
         for i, group in enumerate(by_len[0]):
             if isinstance(group, str):
                 for pat in by_len[1:]:
                     if isinstance(pat[i], int):
-                        pat.insert(i, '')
+                        pat.insert(i, "")
         return rep_pats
 
     def processor(self, func):
         """decorator to define the process for decoding words. Basicaly just
         sugar for separating concerns.
         """
+
         @functools.wraps(func)
         def wrapped(*args, **kwargs):
             return func(self, *args, **kwargs)
+
         return wrapped
 
     def get_stat_part(self, key, string):
@@ -715,9 +762,12 @@ class KeyGenerator:
         max_i = max(i.weight for i in reps) + 1
         intermediate = [(max_i - i.weight, i.values) for i in reps]
         total = sum([i[0] for i in intermediate])
-        return (ReplacementList.new(
-            reps.key, [StatRep(i[0]/total, i[1]) for i in intermediate]),
-                remainder)
+        return (
+            ReplacementList.new(
+                reps.key, [StatRep(i[0] / total, i[1]) for i in intermediate]
+            ),
+            remainder,
+        )
 
     def get_all_stat_parts(self, key, string):
         results = []
@@ -738,8 +788,9 @@ class KeyGenerator:
             except KeyError:
                 return ReplacementKey()
         else:
-            raise TypeError('%s is not supported as "base" argument.'
-                            % type(base))
+            raise TypeError(
+                '%s is not supported as "base" argument.' % type(base)
+            )
 
 
 # Just another Trie for parsing regex-like capture group syntax for
@@ -747,10 +798,10 @@ class KeyGenerator:
 esc_numbs = Trie()
 for i in range(1, 10):
     s = str(i)
-    esc_numbs['\\'+s] = i
-    esc_numbs['\\\\'+s] = '\\' + s
+    esc_numbs["\\" + s] = i
+    esc_numbs["\\\\" + s] = "\\" + s
 del s, i
-_empty_replist = ReplacementList.new('', [''])
+_empty_replist = ReplacementList.new("", [""])
 
 
 def get_empty_replist():

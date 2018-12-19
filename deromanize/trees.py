@@ -30,7 +30,8 @@ class Trie:
     a lot of the same methods and behaviors as a dictionary, along with special
     methods for use with transliteration stuff.
     """
-    __slots__ = 'root', '_len'
+
+    __slots__ = "root", "_len"
 
     def __init__(self, initializer=None):
         """Trie([initializer])
@@ -113,7 +114,7 @@ class Trie:
             return False
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, self.dict())
+        return "%s(%r)" % (self.__class__.__name__, self.dict())
 
     def getstack(self, key: str):
         """given a key, return a tuple containing the final node along with a
@@ -151,7 +152,7 @@ class Trie:
         try:
             k, v = next(iter(self))
         except StopIteration:
-            raise KeyError(self.__class__.__name__ + ' is empty')
+            raise KeyError(self.__class__.__name__ + " is empty")
         del self[k]
         return k, v
 
@@ -181,10 +182,10 @@ class Trie:
             keypart = prefix
         else:
             topnode = self.root
-            keypart = ''
+            keypart = ""
         return self._itemize(topnode, keypart)
 
-    def _itemize(self, topnode, keypart: str = ''):
+    def _itemize(self, topnode, keypart: str = ""):
         """traverse the tree recursively and get spit out the non-empty nodes
         along the way.
         """
@@ -243,7 +244,7 @@ class Trie:
                 break
 
             if node[0] is not ...:
-                value, remainder = node[0], key[i+1:]
+                value, remainder = node[0], key[i + 1 :]
 
         if value is ...:
             raise KeyError(key)
@@ -280,6 +281,7 @@ class BackTrie(Trie):
     """Subclass of Trie that takes it from the back. I used to call this a
     suffix tree, but I've since learned that that is incorrect.
     """
+
     __slots__ = ()
 
     def _mknode(self, key: str):

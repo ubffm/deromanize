@@ -7,7 +7,7 @@ from deromanize import trees
 
 # PROJECT_DIR = os.path.dirname(os.path.dirname(deromanize.__file__))
 # CONFIG_FILE = os.path.join(PROJECT_DIR, 'data', 'test.yml')
-PROFILE = yaml.safe_load(open('test.yml'))
+PROFILE = yaml.safe_load(open("test.yml"))
 
 
 def getbasesdict(*groups):
@@ -20,7 +20,7 @@ def getbasesdict(*groups):
 ####################
 @pytest.fixture
 def profile():
-    return getbasesdict('consonants', 'vowels', 'clusters')
+    return getbasesdict("consonants", "vowels", "clusters")
 
 
 @pytest.fixture
@@ -35,10 +35,12 @@ def suffixtree():
 
 @pytest.fixture
 def rep():
-    return (deromanize.Replacement.new(2, 'foo'),
-            deromanize.Replacement.new(3, 'bar'),
-            deromanize.Replacement.new(4, 'spam'),
-            deromanize.Replacement.new(5, 'eggs'))
+    return (
+        deromanize.Replacement.new(2, "foo"),
+        deromanize.Replacement.new(3, "bar"),
+        deromanize.Replacement.new(4, "spam"),
+        deromanize.Replacement.new(5, "eggs"),
+    )
 
 
 @pytest.fixture
@@ -46,22 +48,24 @@ def key():
     key = deromanize.KeyGenerator(PROFILE)
     return key
 
+
 #####################
 
 
 def test_trie_getting(profile, trie):
-    assert trie['sh'] == profile['sh']
-    assert trie['a'] == profile['a']
+    assert trie["sh"] == profile["sh"]
+    assert trie["a"] == profile["a"]
     with pytest.raises(KeyError):
-        trie['']
-    assert trie._getnode('') is trie.root
-    assert trie.getpart('shalom') == (profile['sh'], 'alom')
-    assert trie.getallparts('shalom') == [
-        profile['sh'],
-        profile['a'],
-        profile['l'],
-        profile['o'],
-        profile['m']]
+        trie[""]
+    assert trie._getnode("") is trie.root
+    assert trie.getpart("shalom") == (profile["sh"], "alom")
+    assert trie.getallparts("shalom") == [
+        profile["sh"],
+        profile["a"],
+        profile["l"],
+        profile["o"],
+        profile["m"],
+    ]
 
 
 def test_trie_integ(profile, trie):
@@ -71,19 +75,21 @@ def test_trie_integ(profile, trie):
     assert trie.containsnode("k'")
     copy = trie.copy()
     assert trie.root == copy.root
-    assert trie._getnode('sh') is not copy._getnode('sh')
+    assert trie._getnode("sh") is not copy._getnode("sh")
 
 
 def test_suffixtree(profile, suffixtree):
-    assert suffixtree['sh'] == profile['sh']
-    assert suffixtree['a'] == profile['a']
+    assert suffixtree["sh"] == profile["sh"]
+    assert suffixtree["a"] == profile["a"]
     assert dict(suffixtree.items()) == profile
-    assert suffixtree.getpart('shalom') == (profile['m'], 'shalo')
-    assert suffixtree.getallparts('shalom') == [profile['sh'],
-                                                profile['a'],
-                                                profile['l'],
-                                                profile['o'],
-                                                profile['m']]
+    assert suffixtree.getpart("shalom") == (profile["m"], "shalo")
+    assert suffixtree.getallparts("shalom") == [
+        profile["sh"],
+        profile["a"],
+        profile["l"],
+        profile["o"],
+        profile["m"],
+    ]
     assert "k'h" in suffixtree
     assert "'h" not in suffixtree
     assert suffixtree.containsnode("'h")
@@ -96,26 +102,27 @@ def test_replacement_addition(rep):
 
 
 def test_replacement_list_addition(rep):
-    rlist1 = deromanize.ReplacementList('baz', [rep[0], rep[1]])
-    rlist2 = deromanize.ReplacementList('fjords', [rep[2], rep[3]])
+    rlist1 = deromanize.ReplacementList("baz", [rep[0], rep[1]])
+    rlist2 = deromanize.ReplacementList("fjords", [rep[2], rep[3]])
     rlist3 = rlist1 + rlist2
     rlist3.sort()
     print(rlist3)
     assert str(rlist3) == (
-            'bazfjords:\n 6 foospam\n 7 fooeggs\n 7 barspam\n 8 bareggs')
+        "bazfjords:\n 6 foospam\n 7 fooeggs\n 7 barspam\n 8 bareggs"
+    )
     rlist4 = deromanize.add_rlists((rlist1, rlist2))
     rlist4.sort()
     assert str(rlist4) == str(rlist3)
 
 
 def test_transkey(key):
-    rep = deromanize.add_rlists(key['base'].getallparts('shalom'))
+    rep = deromanize.add_rlists(key["base"].getallparts("shalom"))
     print(rep)
-    assert str(rep) == 'shalom:\n 0 שלומ\n 1 שלמ'
-    rep = deromanize.add_rlists(key['end'].getallparts('shalom'))
-    assert isinstance(key['end'], trees.BackTrie)
+    assert str(rep) == "shalom:\n 0 שלומ\n 1 שלמ"
+    rep = deromanize.add_rlists(key["end"].getallparts("shalom"))
+    assert isinstance(key["end"], trees.BackTrie)
     print(rep)
-    assert str(rep) == 'shalom:\n 0 שלום'
+    assert str(rep) == "shalom:\n 0 שלום"
 
 
 def test_pattern_gen(key):
