@@ -85,6 +85,18 @@ class Replacement:
     def __eq__(self, other):
         return self.keyvalue == other.keyvalue
 
+    def __gt__(self, other):
+        return self.weight > other.weight
+
+    def __ge__(self, other):
+        return self.weight >= other.weight
+
+    def __lt__(self, other):
+        return self.weight < other.weight
+
+    def __le__(self, other):
+        return self.weight <= other.weight
+
     @property
     def values(self):
         return tuple([i[1] for i in self.keyvalue])
@@ -663,8 +675,8 @@ class KeyGenerator:
     def patterngen(
         self, key_pattern, rep_patterns, weight=0, broken_clusters=None
     ):
-        """implement some kind of pattern-based replacement generation for character
-        classes.
+        """implement some kind of pattern-based replacement generation for
+        character classes.
         """
         # parse pattern strings
         blocks, pattern_idx = self.char_sets.parse_pattern(key_pattern)
