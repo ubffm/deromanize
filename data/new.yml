@@ -149,7 +149,7 @@ broken_clusters:
 # the final decoder.
 gem_prefixes: [ha, mi, ba, va, kha, ka, la, she, ṿa]
 joined_prefixes: [h, m, b, v, k, kh, l, sh, ṿ, u]
-prefix_vowels: eiao
+prefix_vowels: eia
 other_prefixes: [de]
 
 to_new:

@@ -217,7 +217,7 @@ final errors:
 # the final decoder.
 gem_prefixes: [ha, mi, ba, va, ka, ḵa, la, še, wa]
 joined_prefixes: hmbvkḵlšwûūu
-prefix_vowels: ĕieaioēā
+prefix_vowels: ĕieaiēā
 fix_k: true
 
 to_new:
