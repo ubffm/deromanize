@@ -271,7 +271,7 @@ class DBWrapper:
 
         query = (
             self.session.query(Match, Romanized, Standard, Original)
-            .join(Romanized)
+            .join(Romanized, Romanized.id == Match.romanized_id)
             .join(Standard)
             .join(Original)
             .filter(*args)
