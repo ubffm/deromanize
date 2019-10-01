@@ -50,6 +50,12 @@ class Replacement:
 
     __slots__ = "keyvalue", "weight", "_hash"
 
+    def __getstate__(self):
+        return self.keyvalue, self.weight
+
+    def __setstate__(self, state):
+        self.keyvalue, self.weight = state
+
     def __init__(self, weight: int, keyvalue: KeyValue):
         self.keyvalue = keyvalue
         self.weight = weight
@@ -154,6 +160,12 @@ class ReplacementList(abc.MutableSequence):
 
     reptype = Replacement
     __slots__ = "keyparts", "broken", "data"
+
+    def __getstate__(self):
+        return self.keyparts, self.broken, self.data
+
+    def __setstate__(self, state):
+        self.keyparts, self.broken, self.data = state
 
     # all the wacky stuff with "parents" and "keyparts" and soforth is
     # to delay the concatination of strings until the last possible
@@ -382,7 +394,7 @@ class ReplacementKey(Trie):
         for k, v in dictionary.items():
             self.__setitem__(k, v, weight)
 
-    def extend(self, dictionary, weight=None, parent=None):
+    def extend(self, dictionary, weight=None):
         """For each item in in the input dictionary, the coresponding
         replacement list in the trie is extended with the given replacemnts.
         """
