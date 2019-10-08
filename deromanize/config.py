@@ -6,7 +6,7 @@ import yaml
 
 CFG_PATHS = [
     Path() / ".deromanize.yml",
-    Path.home() / ".config" / "derom" / "config.yml",
+    Path.home() / ".config" / "deromanize" / "config.yml",
 ]
 PROJ_PATH = Path(__file__).parents[1]
 
@@ -71,3 +71,13 @@ def get_schemas(user_conf: dict) -> Dict[str, Path]:
         schema_paths = Path(u_schemas).glob("*.yml")
 
     return {p.stem: p for p in schema_paths}
+
+
+def mk_default(resources="resources"):
+    respath = Path().absolute() / resources
+    config = {
+        "pica_db": str(respath / "pica_db.sqlite"),
+        "cache_db": str(respath / "cache_db.sqlite"),
+        "pica_file": str(respath / "titles.txt"),
+    }
+    return config
