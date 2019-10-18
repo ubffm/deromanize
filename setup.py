@@ -12,4 +12,5 @@ setup(
     long_description=open("README.rst").read(),
     packages=["deromanize"],
     requires=["libaaron", "pyyaml", "sqlalchemy"],
+    include_package_data=True,
 )
