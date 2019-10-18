@@ -8,7 +8,7 @@ CFG_PATHS = [
     Path() / ".deromanize.yml",
     Path.home() / ".config" / "deromanize" / "config.yml",
 ]
-PROJ_PATH = Path(__file__).parents[1]
+PROJ_PATH = Path(__file__).parent
 
 
 class ConfigError:

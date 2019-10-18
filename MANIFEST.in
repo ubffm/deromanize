@@ -1,2 +1,1 @@
-include foofile
-graft data
+graft deromanize/data
