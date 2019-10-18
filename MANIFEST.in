@@ -1,1 +1,1 @@
-include data/*
+graft data
