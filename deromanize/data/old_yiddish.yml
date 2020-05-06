@@ -1,0 +1,127 @@
+keys:
+  base:
+    - consonants
+    - vowels
+
+  mid: []
+
+  end:
+    groups:
+      - final
+    suffix: true
+
+  front:
+    - beginning
+
+consonants:
+  ʾ: ""
+  b: ב
+  v: ב
+  g: ג
+  d: ד
+  h: ה
+  w: וו
+  z: ז
+  ḥ: ח
+  ṭ: ט
+  y: [יי, י]
+  j: [יי, י]
+  k: [ק, כ]
+  ch: כ
+  l: ל
+  m: מ
+  n: נ
+  s: ס
+  p: פ
+  f: פ
+  tz: צ
+  ṣ: צ
+  # q: ק
+  r: ר
+  ś: ש
+  š: ש
+  t: ת
+  # "'": [א, ע, "'", '']
+
+vowels:
+  i: י
+  e: ע
+  a: א
+  o: [א, ו]
+  u: ו
+  ei: יי
+  ai: יי
+  oi: וי
+  au: [וי, ווי]
+  eu: [וי, ווי]
+  wi: ווי
+  wu: וו
+  uw: וו
+  yi: יי
+  ji: יי
+  iy: יי
+  ij: יי
+
+final:
+  k: ך
+  ch: ך
+  m: ם
+  n: ן
+  f: ף
+  ts: ץ
+  ṣ: ץ
+
+beginning:
+  y: י
+  j: י
+  ʾu: או
+  ʾi: אי
+  e: ע
+  ʾa: א
+  ʾo: [א, או]
+  u: או
+  ʾei: איי
+  ʾai: איי
+  oi: אוי
+  au: [אוי, אווי]
+  eu: [אוי, אווי]
+
+gem_prefixes: []
+joined_prefixes: ""
+prefix_vowels: ""
+fix_k: false
+
+to_new:
+  replacements:
+    ḵ: kh
+    q: ḳ
+    š: sh
+    ṣ: ts
+    w: ṿ
+    ǧ: gʹ
+    ḏ: dʹ
+    ž: zʹ
+    ḫ: ḥʹ
+    ẓ: ṭʹ
+    č: tsʹ
+    ḍ: tsʹ
+    ṯ: tʹ
+
+  sets:
+    kh: [k, ך]
+    kha: [ka, ך] 
+    ḳ: [k, ק]
+    kh: [ḥ, כ]
+    kah: ka, כה
+    khah: ḵa, כה
+    ʾ: ['', א]
+    ʾ: ["'", א]
+    ʿ: ['', ע]
+    ʿ: ["'", ע]
+    "": ["'", ""]
+    ah: [a, ה]
+    eh: [e, ה]
+    oh: [o, ה]
+    yah: [ya, יה]
+    ś: [s, ש]
+    ṭ: [t, ט]
