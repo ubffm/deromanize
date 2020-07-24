@@ -135,6 +135,10 @@ def add_rs(*reps):
     return Replacement(weight, keyvalue)
 
 
+class CombinatorialExplosion(Exception):
+    pass
+
+
 class StatRep(Replacement):
     """class for representing replacement weights that look like statistics
     because Kai likes multiplication.
@@ -236,6 +240,9 @@ class ReplacementList(abc.MutableSequence):
         concatinated, and all combinations of the replacements are also added
         together. It's a bit multiplicative, really.
         """
+        if len(self) > 10000:
+            raise CombinatorialExplosion
+
         composite_values = [x + y for x, y in itertools.product(self, other)]
 
         return ReplacementList(
