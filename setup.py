@@ -12,5 +12,9 @@ setup(
     "scripts",
     long_description=open("README.rst").read(),
     packages=["deromanize"],
-    requires=["libaaron", "pyyaml", "sqlalchemy"],
+    requires=[
+        "libaaron @ git+https://github.com/ninjaaron/libaaron.git",
+        "pyyaml",
+        "sqlalchemy",
+    ],
 )

@@ -48,6 +48,7 @@ consonants:
   z: ז
   ž: ז׳
   ḥ: ח
+  ch: ח
   ḫ: ח׳
   ṭ: ט
   ẓ: ט׳
@@ -71,9 +72,12 @@ consonants:
   r: ר
   ś: ש
   š: ש
+  sh: [ש, סה]
+  sch: ש
   t: ת
   ṯ: ת׳
   "'": [א, ע, "'", '']
+  "ʻ": [ע, א]
 
 vowels:
   î: י
@@ -141,6 +145,9 @@ clusters:
   jī: [יי, [10, י]]
   "â'": א
   "'â": א
+  ".h": [".ה", "ח"]
+  ".s": [".ס", "צ"]
+  _k: כ
 
 mid_patterns:
   "âV": א\1
@@ -188,8 +195,10 @@ final:
   ḵ: ך
   kā: [כה, ך]
   ḵā: [כה, ך]
+  _kā: [כה, ך]
   ka: [כה, ך]
   ḵa: [כה, ך]
+  _ka: [כה, ך]
   m: ם
   n: ן
   f: ף
@@ -243,8 +252,8 @@ final errors:
 
 # The data structures below are not for use by keygenerators, but for
 # the final decoder.
-gem_prefixes: [ha, mi, ba, ḇa, va, ka, ḵa, la, še, wa]
-joined_prefixes: hmbḇvkḵlšwûūu
+gem_prefixes: [ha, mi, ba, ḇa, va, ka, ḵa, la, še, she, wa, kha]
+joined_prefixes: [h, m, b, ḇ, v, k, l, š, w, û, ū, u, sh, ṿ, kh, ḵ]
 prefix_vowels: ĕieaiēā
 fix_k: true
 
@@ -266,7 +275,7 @@ to_new:
 
   sets:
     kh: [k, ך]
-    kha: [ka, ך] 
+    kha: [ka, ך]
     ḳ: [k, ק]
     kh: [ḥ, כ]
     kah: ka, כה
