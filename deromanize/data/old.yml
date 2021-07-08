@@ -189,7 +189,7 @@ vowel errors:
   e: י
   ā: א
   a: א
-  â: ''
+  # â: ''
 
 final:
   k: ך
