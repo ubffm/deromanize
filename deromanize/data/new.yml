@@ -2,6 +2,7 @@ keys:
   base:
     - consonants
     - vowels
+    - other
     - consonant errors: 15
 
   mid:
@@ -97,6 +98,10 @@ consonant errors:
   ʾ: ע
   v: [וו, ו]
   k: ק
+
+other:
+  '"': ״
+  ʺ: ״
 
 cc:
   CC: \1\2
