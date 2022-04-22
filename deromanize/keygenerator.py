@@ -22,6 +22,7 @@ Classes for implementing the KeyGenerator type.
 import copy
 import functools
 import itertools
+import math
 from collections import abc
 from typing import Tuple, List
 from .trees import Trie, BackTrie
@@ -240,8 +241,8 @@ class ReplacementList(abc.MutableSequence):
         concatinated, and all combinations of the replacements are also added
         together. It's a bit multiplicative, really.
         """
-        if len(self) > 10000:
-            raise CombinatorialExplosion
+        if (n := max(len(self), len(other))) > 10000:
+            raise CombinatorialExplosion(n)
 
         composite_values = [x + y for x, y in itertools.product(self, other)]
 
@@ -358,6 +359,8 @@ def add_rlists(rlists):
     """Add together a bunch of ReplacementLists"""
     if not rlists:
         return get_empty_replist()
+    if (n := math.prod([len(rl) for rl in rlists])) > 10000:
+        raise CombinatorialExplosion(n)
 
     if any(isinstance(rl, StatRepList) for rl in rlists):
         data = [rl.makestat().data for rl in rlists]
