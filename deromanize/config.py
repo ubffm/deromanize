@@ -46,7 +46,8 @@ class Config:
     def get_cache_db(self, db_path=None):
         if not db_path:
             db_path = self["cache_db"]
-        path = Path(db_path).expanduser()
+        path = Path(db_path).expanduser().absolute()
+        print(path)
         # if path.parent.exists():
         return DBWrapper("sqlite:///" + str(path))
         # else:
