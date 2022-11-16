@@ -24,7 +24,7 @@ import functools
 import itertools
 import math
 from collections import abc
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 from .trees import Trie, BackTrie
 
 KeyValue = Tuple[Tuple[str, str], ...]
@@ -178,8 +178,8 @@ class ReplacementList(abc.MutableSequence):
     def __init__(
         self,
         keyparts: KeyParts,
-        values: List[Replacement] = None,
-        weight: int = None,
+        values: Optional[List[Replacement] | List[str]] = None,
+        weight: Optional[int] = None,
         broken=None,
     ):
         assert isinstance(keyparts, tuple)
@@ -194,16 +194,18 @@ class ReplacementList(abc.MutableSequence):
 
     @classmethod
     def new(
-        cls, key: str, values: list = None, weight: int = None, broken=None
+        cls,
+        key: str,
+        values: Optional[List[Replacement] | List[str]] = None,
+        weight: Optional[int] = None,
+        broken=None,
     ) -> "ReplacementList":
         assert isinstance(key, str)
         new = cls((key,), values, weight, broken)
         return new
 
     @classmethod
-    def from_values(
-        cls, values, weight=None, broken=None
-    ) -> "ReplacementList":
+    def from_values(cls, values, weight=None, broken=None) -> "ReplacementList":
         keyparts = values[0].keyparts
         return cls(keyparts, values, weight, broken)
 
@@ -418,9 +420,7 @@ class ReplacementKey(Trie):
         serializable types. A new ReplacementKey can be instantiated from this
         resulting object.
         """
-        return {
-            k: [(i.weight, str(i)) for i in v.data] for k, v in self.items()
-        }
+        return {k: [(i.weight, str(i)) for i in v.data] for k, v in self.items()}
 
     def child(self, *dicts, weight=None, suffix=False):
         """creates a new tree containing starting from the elements in the
@@ -553,9 +553,7 @@ class CharSets:
                         "%r not in the %r key, parent of char set %r!"
                         % (
                             c,
-                            self.key.base_key
-                            if parent_key is None
-                            else parent_key,
+                            self.key.base_key if parent_key is None else parent_key,
                             key,
                         )
                     )
@@ -617,9 +615,7 @@ class KeyGenerator:
         """generates a key from the `keys` section of a profile."""
         info = self.profile["keys"][keyname]
         suffix = info.get("suffix")
-        parent = info.get(
-            "parent", None if keyname == self.base_key else self.base_key
-        )
+        parent = info.get("parent", None if keyname == self.base_key else self.base_key)
         groups = info.get("groups", [])
         if parent not in self.keys and parent is not None:
             self.keygen(parent)
@@ -636,9 +632,7 @@ class KeyGenerator:
                     self.extend(keyname, self.profile[k], weight=v)
         # self[keyname] = key
 
-    def new(
-        self, key_name, *profile_groups, parent=None, weight=None, suffix=False
-    ):
+    def new(self, key_name, *profile_groups, parent=None, weight=None, suffix=False):
         """create a new key based on `parent` key that is updated from the
         specified `profile_groups`.
         """
@@ -660,15 +654,13 @@ class KeyGenerator:
             profile_updates = []
             for k, v in g.items():
                 if any(i in k for i in self.char_sets):
-                    generated = self.patterngen(
-                        k, v, broken_clusters=self.broken
-                    )
+                    generated = self.patterngen(k, v, broken_clusters=self.broken)
                     self[key_name].extend(generated, weight)
                     profile_updates.append((k, generated))
                 else:
-                    self[key_name].setdefault(
-                        k, ReplacementList.new(k)
-                    ).extend(_ensurereplist(k, v, weight))
+                    self[key_name].setdefault(k, ReplacementList.new(k)).extend(
+                        _ensurereplist(k, v, weight)
+                    )
             for key, generated in profile_updates:
                 del g[key]
                 g.update(generated)
@@ -683,9 +675,7 @@ class KeyGenerator:
             profile_updates = []
             for k, v in g.items():
                 if any(i in k for i in self.char_sets):
-                    generated = self.patterngen(
-                        k, v, broken_clusters=self.broken
-                    )
+                    generated = self.patterngen(k, v, broken_clusters=self.broken)
                     self[key_name].update(generated, weight)
                     profile_updates.append((k, generated))
                 else:
@@ -694,9 +684,7 @@ class KeyGenerator:
                 del g[key]
                 g.update(generated)
 
-    def patterngen(
-        self, key_pattern, rep_patterns, weight=0, broken_clusters=None
-    ):
+    def patterngen(self, key_pattern, rep_patterns, weight=0, broken_clusters=None):
         """implement some kind of pattern-based replacement generation for
         character classes.
         """
@@ -704,14 +692,10 @@ class KeyGenerator:
         blocks, pattern_idx = self.char_sets.parse_pattern(key_pattern)
         if isinstance(rep_patterns, str) or isinstance(rep_patterns[0], int):
             rep_patterns = [rep_patterns]
-        rep_patterns = self._normalize_rp(
-            [self._parse_rep(i) for i in rep_patterns]
-        )
+        rep_patterns = self._normalize_rp([self._parse_rep(i) for i in rep_patterns])
         generated = {}
         for keyparts in itertools.product(*blocks):
-            replist = ReplacementList(
-                unpack_keyparts(keyparts), broken=self.broken
-            )
+            replist = ReplacementList(unpack_keyparts(keyparts), broken=self.broken)
             generated[replist.key] = replist
             for i, rep_group in enumerate(rep_patterns):
                 reps = []
@@ -768,9 +752,7 @@ class KeyGenerator:
 
     @staticmethod
     def _normalize_rp(rep_pats):
-        if len(rep_pats) == 1 or all(
-            len(i) == len(rep_pats[0]) for i in rep_pats[1:]
-        ):
+        if len(rep_pats) == 1 or all(len(i) == len(rep_pats[0]) for i in rep_pats[1:]):
             return rep_pats
         by_len = sorted(rep_pats, key=len, reverse=True)
         for i, group in enumerate(by_len[0]):
@@ -822,9 +804,7 @@ class KeyGenerator:
             except KeyError:
                 return ReplacementKey()
         else:
-            raise TypeError(
-                '%s is not supported as "base" argument.' % type(base)
-            )
+            raise TypeError('%s is not supported as "base" argument.' % type(base))
 
 
 # Just another Trie for parsing regex-like capture group syntax for

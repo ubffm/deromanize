@@ -19,6 +19,7 @@
 """Prefix trees with dictionary-like interfaces"""
 import copy
 from collections import abc
+from typing import Optional
 
 
 class Trie:
@@ -169,7 +170,7 @@ class Trie:
             return False
         return True
 
-    def items(self, prefix: str = None):
+    def items(self, prefix: Optional[str] = None):
         """return a generator yielding all keys and values with valid endpoints.
         "prefix" argument is provided, yield all keys and values where the key
         starts with "prefix".
@@ -195,7 +196,7 @@ class Trie:
                 yield (newkeypart, node[0])
             yield from self._itemize(node, newkeypart)
 
-    def keys(self, prefix: str = None):
+    def keys(self, prefix: Optional[str] = None):
         """Return an generator (not a dict view!) with all keys. optional
         `prefix` argument limits results to keys beginning with the given
         prefix.
@@ -204,7 +205,7 @@ class Trie:
 
     __iter__ = keys
 
-    def values(self, prefix: str = None):
+    def values(self, prefix: Optional[str] = None):
         """Return an generator (not a dict view!) with all values. optional
         `prefix` argument limits results to keys beginning with the given
         prefix.
@@ -224,7 +225,7 @@ class Trie:
         new._len = self._len
         return new
 
-    def dict(self, prefix: str = None):
+    def dict(self, prefix: Optional[str] = None):
         """return a dictionary from the prefix tree. optional `prefix` argument
         limits results to keys beginning with the given prefix.
         """
@@ -297,7 +298,7 @@ class BackTrie(Trie):
         value, remainder = super().getpart(key[::-1])
         return value, remainder[::-1]
 
-    def items(self, key: str = None):
+    def items(self, key: Optional[str] = None):
         return ((k[::-1], v) for k, v in super().items(key))
 
     def getallparts(self, key: str):
