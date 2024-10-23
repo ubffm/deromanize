@@ -4,7 +4,7 @@ keys:
     - vowels
     - other
     - bad_geresh
-    - vowel errors: 10 
+    - vowel errors: 10
     - consonant errors: 15
 
   mid:

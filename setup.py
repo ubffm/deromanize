@@ -15,6 +15,6 @@ setup(
     install_requires=[
         "libaaron @ git+https://github.com/ninjaaron/libaaron.git@master",
         "pyyaml",
-        "sqlalchemy==1.4",
+        "sqlalchemy[mypy]==1.4.44",
     ],
 )
